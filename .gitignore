@@ -1,0 +1,11 @@
+node_modules
+dist
+.env
+.env.local
+.wrangler
+npm-debug.log*
+vite-dev.*.log
+server/__pycache__/
+tmp-avatar-candidates/
+screenshot-*.png
+image.png

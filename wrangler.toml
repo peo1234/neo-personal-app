@@ -1,0 +1,6 @@
+name = "neo-personal-app"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-06-23"
+
+[vars]
+NEO_API_BASE = "http://16-145-12-11.sslip.io/neo-api"

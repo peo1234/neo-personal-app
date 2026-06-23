@@ -1,0 +1,26 @@
+{
+  "name": "personal-assistant-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "cf:preview": "wrangler pages dev dist --compatibility-date=2026-06-23",
+    "cf:deploy": "wrangler pages deploy dist --project-name neo-personal-app"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11",
+    "wrangler": "^4.103.0"
+  }
+}
