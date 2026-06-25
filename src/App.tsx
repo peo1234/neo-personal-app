@@ -1,18 +1,24 @@
 import {
+  Activity,
   BellRing,
   Bot,
   CheckCircle2,
   CircleDot,
   Database,
+  Droplet,
+  Droplets,
   File,
+  Heart,
   Inbox,
   ListTodo,
   Mic,
+  Moon,
   Newspaper,
   Paperclip,
   RefreshCcw,
   Send,
   Server,
+  Smile,
   Sparkles,
   Target,
   Upload,
@@ -22,7 +28,6 @@ import {
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { goals as initialGoals, notes as initialNotes, tasks as initialTasks } from "./data/mock";
 import {
-  createCodexTask,
   fetchPushRecords,
   fetchPushStatus,
   runDailyPush,
@@ -31,10 +36,10 @@ import {
   type PushRecord,
   type PushStatus
 } from "./services/assistantGateway";
-import type { Attachment, Goal, Note, Task } from "./types";
+import type { Attachment, Goal, HealthEntry, Note, Task } from "./types";
 
 type CaptureMode = "save" | "organize";
-type AppView = "ai" | "memory" | "push" | "codex";
+type AppView = "ai" | "memory" | "push" | "health";
 
 interface OrganizeResult {
   title: string;
@@ -58,9 +63,34 @@ const starterPrompt =
 const navItems: Array<{ id: AppView; label: string; icon: LucideIcon }> = [
   { id: "ai", label: "AI", icon: Sparkles },
   { id: "memory", label: "记忆", icon: Database },
-  { id: "push", label: "推送", icon: BellRing },
-  { id: "codex", label: "执行", icon: Bot }
+  { id: "health", label: "健康", icon: Heart }
 ];
+
+const MOODS = [
+  { score: 1, emoji: "😫", label: "很糟" },
+  { score: 2, emoji: "😕", label: "不好" },
+  { score: 3, emoji: "😐", label: "一般" },
+  { score: 4, emoji: "🙂", label: "还好" },
+  { score: 5, emoji: "😊", label: "很好" }
+] as const;
+
+const WATER_GOAL = 4;
+
+function moodLabel(score: number) {
+  return MOODS.find((m) => m.score === score)?.label ?? "—";
+}
+
+function stripMarkdown(text: string) {
+  return text
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/^[-*]\s+/gm, "")
+    .replace(/`[^`]+`/g, "")
+    .replace(/\n{2,}/g, " ")
+    .replace(/\n/g, " ")
+    .trim();
+}
 
 function cx(...classes: Array<string | false | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -78,15 +108,17 @@ export default function App() {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [organizeResult, setOrganizeResult] = useState<OrganizeResult | null>(null);
   const [summary, setSummary] = useState(createDailySummary(initialNotes, initialGoals, initialTasks));
-  const [codexDrafts, setCodexDrafts] = useState<CodexDraft[]>([
-    {
-      id: "codex-draft-1",
-      title: "后端接口草案",
-      prompt: starterPrompt,
-      status: "draft",
-      createdAt: "待提交"
+  const [healthLogs, setHealthLogs] = useState<HealthEntry[]>(() => {
+    try { return JSON.parse(localStorage.getItem("neo_health_logs") ?? "[]"); }
+    catch { return []; }
+  });
+  const [logModal, setLogModal] = useState<HealthEntry["category"] | null>(null);
+  const [sleepTracking, setSleepTracking] = useState<{ startTime: string; date: string } | null>(
+    () => {
+      try { return JSON.parse(localStorage.getItem("neo_sleep_tracking") ?? "null"); }
+      catch { return null; }
     }
-  ]);
+  );
   const [toast, setToast] = useState("");
   const [latestPush, setLatestPush] = useState<PushRecord | null>(null);
 
@@ -94,6 +126,33 @@ export default function App() {
 
   useEffect(() => {
     fetchPushRecords().then((records) => setLatestPush(records[0] ?? null));
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("neo_health_logs", JSON.stringify(healthLogs));
+  }, [healthLogs]);
+
+  // Auto-complete sleep tracking left open from a previous day
+  useEffect(() => {
+    if (!sleepTracking || sleepTracking.date >= todayStr()) return;
+    const hours = calcSleepHours(sleepTracking.startTime, "07:30");
+    const entry: HealthEntry = {
+      id: `health-${Date.now()}`,
+      date: sleepTracking.date,
+      category: "sleep",
+      sleepStart: sleepTracking.startTime,
+      sleepEnd: "07:30",
+      sleepHours: hours,
+      createdAt: "07:30"
+    };
+    setHealthLogs((prev) => {
+      if (prev.some((l) => l.date === sleepTracking.date && l.category === "sleep")) return prev;
+      return [entry, ...prev];
+    });
+    setSleepTracking(null);
+    localStorage.removeItem("neo_sleep_tracking");
+    notify("昨晚睡眠已自动保存");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const recentTags = useMemo(() => {
@@ -209,25 +268,77 @@ export default function App() {
     notify("目标摘要已刷新");
   }
 
-  async function queueCodexDraft(draft: CodexDraft) {
-    await createCodexTask({ prompt: draft.prompt, requireApproval: true });
-    setCodexDrafts((current) => current.map((item) => (item.id === draft.id ? { ...item, status: "queued", createdAt: "刚刚" } : item)));
-    setActiveView("codex");
-    notify("Codex 任务已进入队列");
+  function startSleepTracking() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+    const tracking = { startTime: timeStr, date: todayStr() };
+    setSleepTracking(tracking);
+    localStorage.setItem("neo_sleep_tracking", JSON.stringify(tracking));
+    notify(`入睡时间已记录 · ${timeStr}`);
   }
 
-  function createDraftFromOrganized() {
-    const base = organizeResult?.nextAction ?? starterPrompt;
-    const draft: CodexDraft = {
-      id: `codex-draft-${Date.now()}`,
-      title: organizeResult?.title ?? "新的 Codex 执行草稿",
-      prompt: `请基于下面的个人助手需求，给出可执行的代码或文档改动建议：\n\n${base}`,
-      status: "draft",
-      createdAt: "待提交"
+  function finishSleepTracking() {
+    if (!sleepTracking) return;
+    const wakeTime = "07:30";
+    const hours = calcSleepHours(sleepTracking.startTime, wakeTime);
+    saveHealthLog({ category: "sleep", sleepStart: sleepTracking.startTime, sleepEnd: wakeTime, sleepHours: hours });
+    setSleepTracking(null);
+    localStorage.removeItem("neo_sleep_tracking");
+  }
+
+  function cancelSleepTracking() {
+    setSleepTracking(null);
+    localStorage.removeItem("neo_sleep_tracking");
+    notify("睡眠追踪已取消");
+  }
+
+  function addWaterCup() {
+    const today = todayStr();
+    const now = new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+    setHealthLogs((prev) => {
+      const existing = prev.find((l) => l.date === today && l.category === "water");
+      if (existing) {
+        return [
+          { ...existing, waterCount: (existing.waterCount ?? 0) + 1, createdAt: now },
+          ...prev.filter((l) => l.id !== existing.id)
+        ];
+      }
+      return [{ id: `health-${Date.now()}`, date: today, category: "water", waterCount: 1, createdAt: now }, ...prev];
+    });
+    notify("喝水 +1 大杯");
+  }
+
+  function saveMood(score: number) {
+    saveHealthLog({ category: "mood", moodScore: score });
+  }
+
+  function saveHealthLog(data: Omit<HealthEntry, "id" | "date" | "createdAt">) {
+    const today = todayStr();
+    const entry: HealthEntry = {
+      ...data,
+      id: `health-${Date.now()}`,
+      date: today,
+      createdAt: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false })
     };
-    setCodexDrafts((current) => [draft, ...current]);
-    setActiveView("codex");
-    notify("已生成 Codex 草稿");
+    setHealthLogs((prev) => {
+      // These categories allow only one entry per day — replace existing
+      if (data.category === "sleep" || data.category === "digestion" || data.category === "mood") {
+        return [entry, ...prev.filter((l) => !(l.date === today && l.category === data.category))];
+      }
+      return [entry, ...prev];
+    });
+    setLogModal(null);
+    const msg =
+      data.category === "sleep"
+        ? `睡眠已记录 · ${data.sleepHours}h`
+        : data.category === "digestion"
+          ? data.diarrheaCount === 0
+            ? "今日肠胃正常 · 已记录"
+            : `腹泻 ${data.diarrheaCount} 次 · 已记录`
+          : data.category === "mood"
+            ? `心情已记录 · ${moodLabel(data.moodScore!)}`
+            : "健康备注已保存";
+    notify(msg);
   }
 
   return (
@@ -254,15 +365,24 @@ export default function App() {
             nextTask={nextTask}
             recentNotes={notes.slice(0, 2)}
             inboxCount={notes.filter((note) => note.kind === "inbox").length}
-            codexCount={codexDrafts.filter((draft) => draft.status === "draft").length}
             latestPush={latestPush}
             onOpen={setActiveView}
-            onCreateDraft={createDraftFromOrganized}
+            todaySleep={healthLogs.find((l) => l.date === todayStr() && l.category === "sleep")}
+            todayDiarrhea={healthLogs
+              .filter((l) => l.date === todayStr() && l.category === "digestion")
+              .reduce((s, l) => s + (l.diarrheaCount ?? 0), 0)}
+            todayWater={healthLogs.find((l) => l.date === todayStr() && l.category === "water")?.waterCount ?? 0}
+            onLogHealth={setLogModal}
+            sleepTracking={sleepTracking}
+            onStartSleep={startSleepTracking}
+            onFinishSleep={finishSleepTracking}
+            onCancelSleep={cancelSleepTracking}
+            onAddWater={addWaterCup}
           />
         )}
         {activeView === "memory" && <MemoryView notes={notes} recentTags={recentTags} />}
         {activeView === "push" && <PushView onNotify={notify} />}
-        {activeView === "codex" && <CodexView drafts={codexDrafts} onQueue={queueCodexDraft} />}
+        {activeView === "health" && <HealthView logs={healthLogs} onLogHealth={setLogModal} onAddWater={addWaterCup} onSaveMood={saveMood} />}
       </main>
 
       <section className="app-dock">
@@ -292,6 +412,10 @@ export default function App() {
         </nav>
       </section>
 
+      {logModal && (
+        <HealthLogModal category={logModal} onSave={saveHealthLog} onClose={() => setLogModal(null)} />
+      )}
+
       <div className={cx("toast", toast && "show")}>{toast}</div>
     </div>
   );
@@ -302,20 +426,36 @@ function AIView({
   nextTask,
   recentNotes,
   inboxCount,
-  codexCount,
   latestPush,
   onOpen,
-  onCreateDraft
+  todaySleep,
+  todayDiarrhea,
+  todayWater,
+  onLogHealth,
+  sleepTracking,
+  onStartSleep,
+  onFinishSleep,
+  onCancelSleep,
+  onAddWater
 }: {
   result: OrganizeResult | null;
   nextTask: Task;
   recentNotes: Note[];
   inboxCount: number;
-  codexCount: number;
   latestPush: PushRecord | null;
   onOpen: (view: AppView) => void;
-  onCreateDraft: () => void;
+  todaySleep: HealthEntry | undefined;
+  todayDiarrhea: number;
+  todayWater: number;
+  onLogHealth: (category: HealthEntry["category"]) => void;
+  sleepTracking: { startTime: string; date: string } | null;
+  onStartSleep: () => void;
+  onFinishSleep: () => void;
+  onCancelSleep: () => void;
+  onAddWater: () => void;
 }) {
+  const [pushReaderOpen, setPushReaderOpen] = useState(false);
+
   return (
     <section className="screen-stack home-surface">
       <div className="hero-card">
@@ -364,24 +504,139 @@ function AIView({
             <CircleDot size={16} />
             <span>{result.nextAction}</span>
           </div>
-          <button className="secondary-button full" onClick={onCreateDraft}>
-            <Bot size={16} />
-            生成 Codex 草稿
-          </button>
         </article>
       )}
 
-      <button className="home-push" onClick={() => onOpen("push")}>
-        <span className="home-push-icon">
-          <Newspaper size={18} />
-        </span>
-        <div className="home-push-body">
-          <p>日报推送{latestPush ? ` · ${latestPush.channel}` : ""}</p>
-          <h3>{latestPush?.title ?? "明早 08:30 自动同步"}</h3>
-          <span>{latestPush?.excerpt ?? "AI HOT 每日精选，每天自动送到这里。"}</span>
+      <div
+        className={cx("home-push-card", !!latestPush && "is-clickable")}
+        onClick={() => latestPush && setPushReaderOpen(true)}
+      >
+        <div className="home-push-meta">
+          <span className="home-push-source">
+            <Newspaper size={12} />
+            {latestPush?.channel ?? "日报"}
+          </span>
+          <span className="home-push-date">{latestPush?.createdAt ?? "待同步"}</span>
         </div>
-        <span className="home-push-time">{latestPush?.createdAt ?? "待同步"}</span>
-      </button>
+        <h3 className="home-push-title">{latestPush?.title ?? "明早 08:30 自动同步"}</h3>
+        <p className="home-push-excerpt">
+          {latestPush?.excerpt ? stripMarkdown(latestPush.excerpt) : "AI HOT 每日精选，每天自动送到这里。"}
+        </p>
+        {latestPush && <span className="home-push-read">阅读全文 →</span>}
+      </div>
+
+      {pushReaderOpen && latestPush && (
+        <div className="push-reader-overlay" onClick={() => setPushReaderOpen(false)}>
+          <div className="push-reader" onClick={(e) => e.stopPropagation()}>
+            <div className="push-reader-head">
+              <div>
+                <p className="push-reader-meta">{latestPush.channel} · {latestPush.createdAt}</p>
+                <h2>{latestPush.title}</h2>
+              </div>
+              <button className="icon-button" onClick={() => setPushReaderOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="push-reader-body">
+              {latestPush.content
+                ? <ReportMarkdown text={latestPush.content} />
+                : <p style={{ color: "var(--muted)" }}>暂无内容</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="home-health">
+        <div className="home-health-hd">
+          <Heart size={14} />
+          <span>健康</span>
+          <button className="home-health-all" onClick={() => onOpen("health")}>
+            查看全部 ›
+          </button>
+        </div>
+
+        {/* 睡眠行 */}
+        <div className="health-metric-row">
+          <span className="hmr-icon sleep"><Moon size={14} /></span>
+          <div className="hmr-body">
+            <p className="hmr-label">睡眠</p>
+            {todaySleep ? (
+              <div className="hmr-val">
+                <strong>{todaySleep.sleepHours}h</strong>
+                <span>{todaySleep.sleepStart} → {todaySleep.sleepEnd}</span>
+              </div>
+            ) : sleepTracking ? (
+              <div className="hmr-val is-tracking">
+                <span className="hmr-pulse" />
+                追踪中 · 入睡 {sleepTracking.startTime}
+                <em>预计 {calcSleepHours(sleepTracking.startTime, "07:30")}h</em>
+              </div>
+            ) : (
+              <div className="hmr-val is-empty">未记录</div>
+            )}
+          </div>
+          <div className="hmr-actions">
+            {todaySleep ? (
+              <button className="hmr-btn ghost" onClick={() => onLogHealth("sleep")}>修改</button>
+            ) : sleepTracking ? (
+              <div className="hmr-actions-col">
+                <button className="hmr-btn confirm" onClick={onFinishSleep}>起床了</button>
+                <button className="hmr-btn ghost hmr-btn-xs" onClick={onCancelSleep}>取消追踪</button>
+              </div>
+            ) : (
+              <button className="hmr-btn accent" onClick={onStartSleep}>
+                <Moon size={12} />入睡
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 肠胃行 */}
+        <div className="health-metric-row">
+          <span className="hmr-icon digestion"><Droplets size={14} /></span>
+          <div className="hmr-body">
+            <p className="hmr-label">肠胃</p>
+            <div className={cx("hmr-val", todayDiarrhea > 0 && "is-warn")}>
+              {todayDiarrhea > 0 ? (
+                <>腹泻 <strong>{todayDiarrhea}</strong> 次</>
+              ) : (
+                "今日正常"
+              )}
+              <span className={cx("hmr-pill", todayDiarrhea > 0 ? "warn" : "ok")}>
+                {todayDiarrhea > 0 ? "注意" : "正常"}
+              </span>
+            </div>
+          </div>
+          <div className="hmr-actions">
+            <button className="hmr-btn ghost" onClick={() => onLogHealth("digestion")}>记录</button>
+          </div>
+        </div>
+
+        {/* 喝水行 */}
+        <div className="health-metric-row">
+          <span className="hmr-icon water"><Droplet size={14} /></span>
+          <div className="hmr-body">
+            <p className="hmr-label">喝水</p>
+            <div className="hmr-val">
+              {todayWater > 0 ? (
+                <><strong>{todayWater}</strong><span>大杯 · 目标 {WATER_GOAL} 杯</span></>
+              ) : (
+                <span className="is-empty">未记录</span>
+              )}
+              {todayWater > 0 && (
+                <span className={cx("hmr-pill", todayWater >= WATER_GOAL ? "ok" : "neutral")}>
+                  {todayWater >= WATER_GOAL ? "达标" : `${WATER_GOAL - todayWater} 杯`}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="hmr-actions">
+            <button className="hmr-btn accent" onClick={onAddWater}>
+              <Droplet size={12} />+1
+            </button>
+          </div>
+        </div>
+      </div>
 
       <section className="home-entries">
         <button className="entry-card" onClick={() => onOpen("memory")}>
@@ -394,14 +649,14 @@ function AIView({
             <span className="entry-sub">{recentNotes[0]?.text ?? "记忆流"}</span>
           </div>
         </button>
-        <button className="entry-card" onClick={() => onOpen("codex")}>
-          <span className="entry-icon">
-            <Bot size={18} />
+        <button className="entry-card" onClick={() => onOpen("health")}>
+          <span className="entry-icon" style={{ color: "var(--blue)", background: "var(--blue-soft)" }}>
+            <Heart size={18} />
           </span>
           <div>
-            <p>Codex AI</p>
-            <h3>{codexCount > 0 ? `${codexCount} 个待执行` : "接入执行"}</h3>
-            <span className="entry-sub">代码 · 文档 · 项目</span>
+            <p>健康</p>
+            <h3>{todaySleep ? `睡了 ${todaySleep.sleepHours}h` : "记录健康"}</h3>
+            <span className="entry-sub">睡眠 · 饮食 · 追踪</span>
           </div>
         </button>
       </section>
@@ -828,4 +1083,330 @@ function formatFileSize(size: number) {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
+}
+
+/* ─── Health utilities ─── */
+
+function todayStr() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function calcSleepHours(start: string, end: string): number {
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  let mins = (eh * 60 + em) - (sh * 60 + sm);
+  if (mins <= 0) mins += 24 * 60;
+  return Math.round(mins / 6) / 10;
+}
+
+function getHealthStatus(sleep: HealthEntry | undefined, diarrhea: number) {
+  if (!sleep && diarrhea === 0) return { label: "待记录", cls: "neutral" };
+  const sleepOk = sleep ? (sleep.sleepHours ?? 0) >= 7 : true;
+  const gutOk = diarrhea === 0;
+  if (sleepOk && gutOk) return { label: "良好", cls: "good" };
+  if (!sleepOk && !gutOk) return { label: "注意", cls: "bad" };
+  return { label: "一般", cls: "fair" };
+}
+
+/* ─── Health components ─── */
+
+function HealthView({
+  logs,
+  onLogHealth,
+  onAddWater,
+  onSaveMood
+}: {
+  logs: HealthEntry[];
+  onLogHealth: (category: HealthEntry["category"]) => void;
+  onAddWater: () => void;
+  onSaveMood: (score: number) => void;
+}) {
+  const today = todayStr();
+  const sleepLog = logs.find((l) => l.date === today && l.category === "sleep");
+  const todayDiarrhea = logs
+    .filter((l) => l.date === today && l.category === "digestion")
+    .reduce((s, l) => s + (l.diarrheaCount ?? 0), 0);
+  const todayWater = logs.find((l) => l.date === today && l.category === "water")?.waterCount ?? 0;
+  const todayMood = logs.find((l) => l.date === today && l.category === "mood");
+  const status = getHealthStatus(sleepLog, todayDiarrhea);
+
+  return (
+    <section className="screen-stack">
+      <div className="content-head floating">
+        <div>
+          <p>健康追踪</p>
+          <h2>今日状态</h2>
+        </div>
+        <Heart size={20} style={{ color: "var(--blue)" }} />
+      </div>
+
+      <div className="panel-card health-summary-card">
+        <div className="health-stat-row">
+          <div className="health-stat">
+            <Moon size={18} style={{ color: "var(--blue)" }} />
+            <strong>{sleepLog ? `${sleepLog.sleepHours}h` : "—"}</strong>
+            <span>睡眠</span>
+          </div>
+          <div className="health-divider" />
+          <div className="health-stat">
+            <Droplets size={18} style={{ color: "var(--amber)" }} />
+            <strong style={{ color: todayDiarrhea > 0 ? "var(--amber)" : "var(--ink)" }}>
+              {todayDiarrhea > 0 ? `${todayDiarrhea}次` : "正常"}
+            </strong>
+            <span>肠胃</span>
+          </div>
+          <div className="health-divider" />
+          <div className="health-stat">
+            <Droplet size={18} style={{ color: "var(--blue)" }} />
+            <strong style={{ color: todayWater >= WATER_GOAL ? "var(--green)" : "var(--ink)" }}>
+              {todayWater > 0 ? `${todayWater}杯` : "—"}
+            </strong>
+            <span>喝水</span>
+          </div>
+          <div className="health-divider" />
+          <div className="health-stat">
+            <Activity size={18} style={{ color: "var(--green)" }} />
+            <strong className={`health-status-${status.cls}`}>{status.label}</strong>
+            <span>状态</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 心情选择 */}
+      <div className="panel-card mood-card">
+        <div className="mood-card-head">
+          <Smile size={14} style={{ color: "var(--amber)" }} />
+          <span>今日心情</span>
+          {todayMood && <span className="mood-selected-label">{moodLabel(todayMood.moodScore!)}</span>}
+        </div>
+        <div className="mood-picker">
+          {MOODS.map(({ score, emoji }) => (
+            <button
+              key={score}
+              className={cx("mood-btn", todayMood?.moodScore === score && "selected")}
+              onClick={() => onSaveMood(score)}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <SleepChart logs={logs} />
+
+      <div className="health-quick-actions">
+        <button className="secondary-button" onClick={() => onLogHealth("sleep")}>
+          <Moon size={15} /> 记录睡眠
+        </button>
+        <button className="secondary-button" onClick={() => onLogHealth("digestion")}>
+          <Droplets size={15} /> 记录肠胃
+        </button>
+        <button className="secondary-button" onClick={onAddWater}>
+          <Droplet size={15} /> 喝水 +1
+        </button>
+      </div>
+
+      <div className="panel-card health-log-list">
+        <div className="content-head" style={{ padding: "14px 16px 10px" }}>
+          <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>记录历史</p>
+        </div>
+        {logs.length === 0 ? (
+          <div className="health-empty">
+            <Heart size={28} />
+            <p>还没有记录</p>
+            <span>用上方快捷按钮记录睡眠和饮食</span>
+          </div>
+        ) : (
+          logs.map((entry) => <HealthLogRow key={entry.id} entry={entry} />)
+        )}
+      </div>
+    </section>
+  );
+}
+
+function HealthLogRow({ entry }: { entry: HealthEntry }) {
+  const icon =
+    entry.category === "sleep" ? (
+      <Moon size={15} />
+    ) : entry.category === "digestion" ? (
+      <Droplets size={15} />
+    ) : entry.category === "water" ? (
+      <Droplet size={15} />
+    ) : entry.category === "mood" ? (
+      <span style={{ fontSize: 15, lineHeight: 1 }}>
+        {MOODS.find((m) => m.score === entry.moodScore)?.emoji ?? "😐"}
+      </span>
+    ) : (
+      <Activity size={15} />
+    );
+
+  const summary =
+    entry.category === "sleep"
+      ? `${entry.sleepStart} — ${entry.sleepEnd}，共 ${entry.sleepHours}h`
+      : entry.category === "digestion"
+        ? (entry.diarrheaCount ?? 0) > 0
+          ? `腹泻 ${entry.diarrheaCount} 次`
+          : "今日肠胃正常 · 已确认"
+        : entry.category === "water"
+          ? `今日喝水 ${entry.waterCount} 大杯`
+          : entry.category === "mood"
+            ? `心情 · ${moodLabel(entry.moodScore!)}`
+            : entry.note ?? "健康备注";
+
+  return (
+    <article className="health-log-row">
+      <span className={`health-log-icon ${entry.category}`}>{icon}</span>
+      <div>
+        <h3>{summary}</h3>
+        <p>
+          {entry.date} · {entry.createdAt}
+          {entry.note && entry.category !== "note" ? ` · ${entry.note}` : ""}
+        </p>
+      </div>
+    </article>
+  );
+}
+
+function SleepChart({ logs }: { logs: HealthEntry[] }) {
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - i));
+    return d.toISOString().slice(0, 10);
+  });
+
+  const MAX_H = 10;
+
+  const recordedHours = days
+    .map((d) => logs.find((l) => l.date === d && l.category === "sleep")?.sleepHours ?? 0)
+    .filter((h) => h > 0);
+  const weekAvg =
+    recordedHours.length > 0
+      ? Math.round((recordedHours.reduce((a, b) => a + b, 0) / recordedHours.length) * 10) / 10
+      : null;
+
+  return (
+    <div className="panel-card sleep-chart-card">
+      <div className="sleep-chart-head">
+        <Moon size={15} style={{ color: "var(--blue)" }} />
+        <span>近 7 天睡眠</span>
+      </div>
+      <div className="sleep-chart-bars">
+        {days.map((date) => {
+          const log = logs.find((l) => l.date === date && l.category === "sleep");
+          const hours = log?.sleepHours ?? 0;
+          const pct = Math.min(hours / MAX_H, 1) * 100;
+          const cls = hours === 0 ? "empty" : hours >= 7 ? "good" : hours >= 6 ? "fair" : "bad";
+          const dayLabel = new Date(date + "T12:00:00").toLocaleDateString("zh-CN", { weekday: "short" }).replace("周", "");
+          const isToday = date === todayStr();
+
+          return (
+            <div key={date} className={cx("sleep-bar-col", isToday && "today")}>
+              {hours > 0 && <span className="sleep-bar-val">{hours}h</span>}
+              <div className="sleep-bar-wrap">
+                <div className={`sleep-bar ${cls}`} style={{ height: `${pct}%` }} />
+              </div>
+              <span className="sleep-bar-day">{dayLabel}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="sleep-chart-legend">
+        <span className="good">≥7h</span>
+        <span className="fair">6–7h</span>
+        <span className="bad">&lt;6h</span>
+      </div>
+      {weekAvg !== null && (
+        <p className="sleep-chart-avg">
+          本周平均 <strong>{weekAvg}h</strong> · {recordedHours.length} 天有记录
+        </p>
+      )}
+    </div>
+  );
+}
+
+function HealthLogModal({
+  category,
+  onSave,
+  onClose
+}: {
+  category: HealthEntry["category"];
+  onSave: (data: Omit<HealthEntry, "id" | "date" | "createdAt">) => void;
+  onClose: () => void;
+}) {
+  const [sleepStart, setSleepStart] = useState("23:00");
+  const [sleepEnd, setSleepEnd] = useState("07:00");
+  const [diarrheaCount, setDiarrheaCount] = useState(1);
+  const [note, setNote] = useState("");
+
+  const sleepHours = calcSleepHours(sleepStart, sleepEnd);
+
+  function handleSave() {
+    if (category === "sleep") {
+      onSave({ category, sleepStart, sleepEnd, sleepHours, note: note || undefined });
+    } else if (category === "digestion") {
+      onSave({ category, diarrheaCount, note: note || undefined });
+    } else {
+      if (!note.trim()) return;
+      onSave({ category, note });
+    }
+  }
+
+  const title =
+    category === "sleep" ? "记录睡眠" : category === "digestion" ? "记录肠胃" : "健康备注";
+
+  return (
+    <div className="health-modal-overlay" onClick={onClose}>
+      <div className="health-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="health-modal-head">
+          <h3>{title}</h3>
+          <button className="icon-button" onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
+
+        {category === "sleep" && (
+          <div className="health-fields">
+            <label className="health-field">
+              <span>入睡时间</span>
+              <input type="time" value={sleepStart} onChange={(e) => setSleepStart(e.target.value)} />
+            </label>
+            <label className="health-field">
+              <span>起床时间</span>
+              <input type="time" value={sleepEnd} onChange={(e) => setSleepEnd(e.target.value)} />
+            </label>
+            <p className="sleep-preview">
+              共睡 <strong>{sleepHours}</strong> 小时
+            </p>
+          </div>
+        )}
+
+        {category === "digestion" && (
+          <div className="health-fields">
+            <p className="health-field-label">今天腹泻次数</p>
+            <div className="digestion-counter">
+              <button onClick={() => setDiarrheaCount((c) => Math.max(0, c - 1))}>−</button>
+              <span>{diarrheaCount}</span>
+              <button onClick={() => setDiarrheaCount((c) => c + 1)}>+</button>
+            </div>
+          </div>
+        )}
+
+        <textarea
+          className="health-note-input"
+          placeholder={category === "note" ? "记录健康状态、症状或感受..." : "补充说明（可选）"}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={3}
+        />
+
+        <button
+          className="primary-button full"
+          disabled={category === "note" && !note.trim()}
+          onClick={handleSave}
+        >
+          保存记录
+        </button>
+      </div>
+    </div>
+  );
 }

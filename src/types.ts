@@ -83,3 +83,17 @@ export interface PushRecord {
   excerpt?: string;
   content?: string;
 }
+
+export interface HealthEntry {
+  id: string;
+  date: string;
+  category: "sleep" | "digestion" | "note" | "water" | "mood";
+  sleepStart?: string;
+  sleepEnd?: string;
+  sleepHours?: number;
+  diarrheaCount?: number;
+  waterCount?: number;
+  moodScore?: number;
+  note?: string;
+  createdAt: string;
+}

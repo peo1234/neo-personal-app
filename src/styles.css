@@ -1397,13 +1397,13 @@ button:disabled {
     position: absolute;
     right: 2px;
     top: 0;
-    width: 84px;
-    height: 84px;
-    opacity: 0.92;
+    width: 68px;
+    height: 68px;
+    opacity: 0.88;
   }
 
   .mascot-sticker {
-    --mascot-scale: 0.72;
+    --mascot-scale: 0.62;
     right: -3px;
     bottom: -2px;
   }
@@ -1787,8 +1787,8 @@ button:disabled {
   }
 
   .home-surface .hero-card {
-    min-height: 136px;
-    padding: 8px 4px 18px;
+    min-height: 78px;
+    padding: 8px 4px 10px;
   }
 
   .home-surface .home-mosaic {
@@ -1968,78 +1968,138 @@ button:disabled {
 }
 
 /* Home entry: latest daily push, taps through to the 推送 board. */
-.home-surface .home-push {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 12px;
-  width: 100%;
+/* Home push card — compact preview, tap to read */
+.home-push-card {
   margin: 10px 4px 0;
-  padding: 13px 14px;
-  text-align: left;
-  border: 0;
+  padding: 14px 16px 14px;
   border-radius: 22px;
   background:
-    linear-gradient(135deg, rgba(11, 122, 91, 0.12), transparent 52%),
+    linear-gradient(135deg, rgba(11, 122, 91, 0.09), transparent 52%),
     rgba(255, 255, 255, 0.34);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.54);
+  transition: background 160ms ease;
 }
 
-.home-push-icon {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 13px;
+.home-push-card.is-clickable {
+  cursor: pointer;
+}
+
+.home-push-card.is-clickable:active {
+  background:
+    linear-gradient(135deg, rgba(11, 122, 91, 0.15), transparent 52%),
+    rgba(255, 255, 255, 0.44);
+  transition-duration: 60ms;
+}
+
+.home-push-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 7px;
+}
+
+.home-push-source {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--green);
-  background: rgba(223, 244, 235, 0.6);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.02em;
 }
 
-.home-push-body {
-  min-width: 0;
-}
-
-.home-push-body p {
-  margin: 0;
+.home-push-date {
+  font-size: 11px;
   color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
 }
 
-.home-push-body h3 {
-  margin: 3px 0 0;
+.home-push-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--ink);
-  font-size: 16px;
-  line-height: 1.25;
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
+  line-height: 1.35;
 }
 
-.home-push-body span {
+.home-push-excerpt {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  line-height: 1.6;
   display: -webkit-box;
-  margin-top: 5px;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.5;
+  -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  overflow: hidden;
 }
 
-.home-push-time {
-  flex: 0 0 auto;
-  color: var(--muted);
+.home-push-read {
   font-size: 12px;
-  white-space: nowrap;
+  font-weight: 500;
+  color: var(--green);
 }
 
 @media (max-width: 560px) {
-  .home-surface .home-push {
+  .home-push-card {
     margin: 8px 0 0;
   }
+}
+
+/* Full-screen report reader (bottom sheet) */
+.push-reader-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(16, 32, 36, 0.32);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.push-reader {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: 8%;
+  background: var(--bg);
+  border-radius: 28px 28px 0 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.push-reader-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 14px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+
+.push-reader-meta {
+  margin: 0 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: 0.02em;
+}
+
+.push-reader-head h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+.push-reader-body {
+  padding: 16px 18px calc(32px + env(safe-area-inset-bottom));
+  font-size: 14px;
+  line-height: 1.8;
 }
 
 /* Home entries: 笔记 + Code 接入入口, tap through to their views. */
@@ -2137,4 +2197,821 @@ button:disabled {
   line-height: 1.4;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+/* ─── Health ─── */
+
+/* ─── Home health card (row design) ─── */
+
+.home-health {
+  margin: 10px 4px 0;
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.4);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.64);
+  overflow: hidden;
+}
+
+.home-health-hd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 14px 9px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.home-health-hd > svg {
+  color: var(--blue);
+}
+
+.home-health-all {
+  margin-left: auto;
+  color: var(--blue);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.72;
+  transition: opacity 140ms ease;
+}
+
+.home-health-all:hover {
+  opacity: 1;
+}
+
+/* Each metric row */
+.health-metric-row {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 10px 14px;
+  border-top: 1px solid rgba(25, 38, 42, 0.07);
+  transition: background 140ms ease;
+}
+
+.hmr-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+}
+
+.hmr-icon.sleep     { color: var(--blue);  background: var(--blue-soft); }
+.hmr-icon.digestion { color: var(--amber); background: var(--amber-soft); }
+
+.hmr-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.hmr-label {
+  margin: 0 0 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.hmr-val {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.hmr-val strong {
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.hmr-val > span:not(.hmr-pill) {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.hmr-val.is-empty {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.hmr-val.is-tracking {
+  gap: 5px;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.hmr-val.is-tracking em {
+  font-style: normal;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.hmr-pulse {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: dotPulse 1.8s ease-in-out infinite;
+}
+
+.hmr-val.is-warn strong {
+  color: var(--amber);
+}
+
+.hmr-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px !important;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.hmr-pill.ok      { color: var(--green); background: var(--green-soft); }
+.hmr-pill.warn    { color: var(--amber); background: var(--amber-soft); }
+.hmr-pill.neutral { color: var(--muted); background: rgba(25, 38, 42, 0.07); }
+
+.hmr-actions {
+  flex: 0 0 auto;
+}
+
+.hmr-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 140ms ease,
+    background 140ms ease;
+}
+
+.hmr-btn.ghost {
+  border: 1px solid var(--line-strong);
+  color: var(--ink-2);
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.hmr-btn.accent {
+  border: 1px solid rgba(37, 106, 154, 0.26);
+  color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.hmr-btn.confirm {
+  border: 1px solid rgba(11, 122, 91, 0.26);
+  color: var(--green);
+  background: var(--green-soft);
+  font-weight: 600;
+}
+
+.hmr-btn:hover {
+  transform: translateY(-1px);
+}
+
+.hmr-btn:active {
+  transform: scale(0.90);
+  transition-duration: 60ms;
+}
+
+@media (max-width: 560px) {
+  .home-health {
+    margin: 8px 0 0;
+  }
+}
+
+/* Sleep chart */
+.sleep-chart-card {
+  padding: 14px 16px;
+}
+
+.sleep-chart-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 14px;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.sleep-chart-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 80px;
+  padding-bottom: 22px;
+  position: relative;
+}
+
+.sleep-bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  height: 100%;
+  gap: 4px;
+}
+
+.sleep-bar-col.today .sleep-bar-day {
+  color: var(--blue);
+  font-weight: 700;
+}
+
+.sleep-bar-val {
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.sleep-bar-wrap {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgba(25, 38, 42, 0.06);
+}
+
+.sleep-bar {
+  width: 100%;
+  border-radius: 6px 6px 0 0;
+  transition: height 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.sleep-bar.good  { background: linear-gradient(180deg, rgba(11, 122, 91, 0.7), rgba(11, 122, 91, 0.4)); }
+.sleep-bar.fair  { background: linear-gradient(180deg, rgba(154, 107, 24, 0.7), rgba(154, 107, 24, 0.4)); }
+.sleep-bar.bad   { background: linear-gradient(180deg, rgba(169, 79, 66, 0.7), rgba(169, 79, 66, 0.4)); }
+.sleep-bar.empty { height: 0 !important; }
+
+.sleep-bar-day {
+  position: absolute;
+  bottom: 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.sleep-chart-legend {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  font-size: 11px;
+}
+
+.sleep-chart-legend .good  { color: var(--green); }
+.sleep-chart-legend .fair  { color: var(--amber); }
+.sleep-chart-legend .bad   { color: var(--red); }
+
+/* (home-health styles moved to row-design block above) */
+
+/* Health view summary card */
+.health-summary-card {
+  padding: 16px 0;
+}
+
+.health-stat-row {
+  display: flex;
+  align-items: center;
+}
+
+.health-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  padding: 10px 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.health-stat strong {
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.health-status-good { color: var(--green) !important; }
+.health-status-fair { color: var(--amber) !important; }
+.health-status-bad  { color: var(--red) !important; }
+.health-status-neutral { color: var(--muted) !important; }
+
+.health-divider {
+  width: 1px;
+  height: 46px;
+  background: var(--line);
+  flex: 0 0 auto;
+}
+
+/* Quick actions row in health view */
+.health-quick-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.health-quick-actions .secondary-button {
+  justify-content: center;
+  font-size: 13px;
+  min-height: 38px;
+}
+
+/* Health log list */
+.health-log-list {
+  overflow: hidden;
+}
+
+.health-log-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+}
+
+.health-log-row:first-of-type {
+  border-top: 0;
+}
+
+.health-log-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 11px;
+}
+
+.health-log-icon.sleep     { color: var(--blue);  background: var(--blue-soft); }
+.health-log-icon.digestion { color: var(--amber); background: var(--amber-soft); }
+.health-log-icon.note      { color: var(--green); background: var(--green-soft); }
+
+.health-log-row h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.health-log-row p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.health-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 36px 16px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 13px;
+}
+
+.health-empty svg {
+  color: var(--line-strong);
+  margin-bottom: 6px;
+}
+
+.health-empty p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Health log modal */
+.health-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-end;
+  padding: 14px;
+  background: rgba(10, 20, 22, 0.38);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+.health-modal {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 28px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(240, 248, 246, 0.90));
+  box-shadow: 0 32px 72px rgba(18, 36, 44, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  display: grid;
+  gap: 14px;
+  animation: screenEnter 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.health-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.health-modal-head h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.health-fields {
+  display: grid;
+  gap: 10px;
+}
+
+.health-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  color: var(--ink-2);
+  cursor: default;
+}
+
+.health-field span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.health-field input[type="time"] {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+}
+
+.health-field-label {
+  margin: 0;
+  padding: 0 2px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sleep-preview {
+  margin: 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.sleep-preview strong {
+  color: var(--blue);
+  font-size: 17px;
+}
+
+.digestion-counter {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.digestion-counter button {
+  width: 54px;
+  height: 52px;
+  font-size: 22px;
+  color: var(--ink-2);
+  background: transparent;
+  transition: background 120ms ease;
+}
+
+.digestion-counter button:hover {
+  background: rgba(25, 38, 42, 0.05);
+}
+
+.digestion-counter span {
+  flex: 1;
+  text-align: center;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  padding: 8px 0;
+}
+
+.health-note-input {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  resize: none;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.7);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.health-note-input:focus {
+  border-color: rgba(37, 106, 154, 0.42);
+  box-shadow: 0 0 0 3px rgba(37, 106, 154, 0.08);
+}
+
+@media (max-width: 560px) {
+  .home-health {
+    margin: 8px 0 0;
+  }
+}
+
+/* ─── Polish layer ─── */
+
+@keyframes screenEnter {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dockRise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmerSweep {
+  0% {
+    transform: translateX(-130%) skewX(-14deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(230%) skewX(-14deg);
+    opacity: 0;
+  }
+}
+
+@keyframes dotPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(11, 122, 91, 0.14);
+  }
+  50% {
+    box-shadow: 0 0 0 9px rgba(11, 122, 91, 0.05);
+  }
+}
+
+/* View switch entrance */
+.screen-stack {
+  animation: screenEnter 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* App dock startup */
+.app-dock {
+  animation: dockRise 400ms 80ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Hero card light sweep */
+.hero-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    108deg,
+    transparent 32%,
+    rgba(255, 255, 255, 0.32) 50%,
+    transparent 68%
+  );
+  animation: shimmerSweep 6s 2s ease-in-out infinite;
+}
+
+/* Neo buddy blink — keyframe already defined above */
+.neo-eye {
+  animation: kidBlink 5.5s 1.4s ease-in-out infinite;
+}
+.neo-eye.right {
+  animation-delay: 1.52s;
+}
+
+/* Task "doing" pulse */
+.task-dot.doing {
+  animation: dotPulse 2.8s ease-in-out infinite;
+}
+
+/* Entry cards — glass lift on hover, press snap on active */
+.entry-card {
+  transition:
+    transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 180ms ease,
+    background 180ms ease,
+    border-color 180ms ease;
+}
+
+.entry-card:hover {
+  transform: translateY(-3px) scale(1.018);
+  background: rgba(255, 255, 255, 0.48);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.78),
+    0 18px 38px rgba(25, 46, 52, 0.14);
+}
+
+.entry-card:active {
+  transform: scale(0.95);
+  transition-duration: 75ms;
+}
+
+
+/* Button micro-interactions */
+.primary-button {
+  transition:
+    transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 160ms ease;
+}
+
+.primary-button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 20px 36px rgba(18, 23, 25, 0.24);
+}
+
+.primary-button:not(:disabled):active {
+  transform: scale(0.93);
+  box-shadow: 0 4px 8px rgba(18, 23, 25, 0.10);
+  transition-duration: 65ms;
+}
+
+.secondary-button,
+.tool-button {
+  transition: transform 130ms ease, opacity 120ms ease;
+}
+
+.secondary-button:not(:disabled):active,
+.tool-button:not(:disabled):active {
+  transform: scale(0.90);
+  transition-duration: 60ms;
+}
+
+/* Bottom nav active bounce */
+.app-dock .bottom-nav button {
+  transition:
+    color 160ms ease,
+    background 200ms ease,
+    transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.app-dock .bottom-nav button.active {
+  transform: translateY(-2px) scale(1.05);
+}
+
+/* Reduced motion — disable all polish layer animations */
+@media (prefers-reduced-motion: reduce) {
+  .screen-stack,
+  .app-dock,
+  .hero-card::after,
+  .neo-eye,
+  .task-dot.doing {
+    animation: none;
+  }
+
+  .entry-card,
+  .primary-button,
+  .secondary-button,
+  .tool-button,
+  .app-dock .bottom-nav button {
+    transition: none;
+  }
+}
+
+/* ─── Water icon color ─── */
+.hmr-icon.water {
+  color: var(--blue);
+  background: var(--blue-soft);
+}
+
+/* ─── Mood card ─── */
+.mood-card {
+  padding: 14px 16px 16px;
+}
+
+.mood-card-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+
+.mood-selected-label {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--amber);
+  font-weight: 500;
+}
+
+.mood-picker {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mood-btn {
+  flex: 1;
+  font-size: 24px;
+  line-height: 1;
+  padding: 10px 0;
+  background: var(--surface-soft);
+  border: 1.5px solid transparent;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 140ms cubic-bezier(0.34, 1.56, 0.64, 1), border-color 120ms ease, background 120ms ease;
+}
+
+.mood-btn:hover {
+  background: var(--blue-soft);
+  transform: translateY(-2px) scale(1.08);
+}
+
+.mood-btn:active {
+  transform: scale(0.92);
+  transition-duration: 60ms;
+}
+
+.mood-btn.selected {
+  border-color: var(--amber);
+  background: var(--amber-soft);
+  transform: scale(1.06);
+}
+
+/* ─── 4-column health stats ─── */
+.health-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.health-stat {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ─── Sleep chart weekly average ─── */
+.sleep-chart-avg {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+.sleep-chart-avg strong {
+  color: var(--blue);
+}
+
+/* ─── Sleep tracking cancel row ─── */
+.hmr-actions-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+.hmr-btn-xs {
+  font-size: 10px !important;
+  padding: 2px 7px !important;
+  opacity: 0.7;
 }
