@@ -1,8 +1,9 @@
-import {
+﻿import {
   Activity,
   BellRing,
   Bot,
   CheckCircle2,
+  Circle,
   CircleDot,
   Database,
   Droplet,
@@ -15,7 +16,9 @@ import {
   Moon,
   Newspaper,
   Paperclip,
+  Pencil,
   RefreshCcw,
+  Search,
   Send,
   Server,
   Smile,
@@ -25,7 +28,7 @@ import {
   X,
   type LucideIcon
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { goals as initialGoals, notes as initialNotes, tasks as initialTasks } from "./data/mock";
 import {
   fetchPushRecords,
@@ -40,6 +43,7 @@ import type { Attachment, Goal, HealthEntry, Note, Task } from "./types";
 
 type CaptureMode = "save" | "organize";
 type AppView = "ai" | "memory" | "push" | "health";
+type NoteFilter = Note["kind"] | "all";
 
 interface OrganizeResult {
   title: string;
@@ -61,8 +65,9 @@ const starterPrompt =
   "把这个个人助手 app 的第一版后端接口设计出来：记忆流、AI 整理、目标总结、Codex 任务队列。要求包含数据模型、权限边界和最小可运行 API。";
 
 const navItems: Array<{ id: AppView; label: string; icon: LucideIcon }> = [
-  { id: "ai", label: "AI", icon: Sparkles },
-  { id: "memory", label: "记忆", icon: Database },
+  { id: "ai", label: "主页", icon: Sparkles },
+  { id: "push", label: "AI日报", icon: BellRing },
+  { id: "memory", label: "随手记", icon: Database },
   { id: "health", label: "健康", icon: Heart }
 ];
 
@@ -100,6 +105,20 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const speechRef = useRef<any>(null);
   const [activeView, setActiveView] = useState<AppView>("ai");
+
+  // Check server version and reload if newer
+  useEffect(() => {
+    const check = async () => {
+      try {
+        const res = await fetch("/version.txt?t=" + Date.now());
+        const serverVer = parseInt((await res.text()).trim(), 10);
+        if (serverVer > __APP_VERSION__) window.location.reload();
+      } catch {}
+    };
+    const t = window.setTimeout(check, 3000);
+    const i = window.setInterval(check, 120000);
+    return () => { clearTimeout(t); clearInterval(i); };
+  }, []);
   const [captureText, setCaptureText] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -120,13 +139,7 @@ export default function App() {
     }
   );
   const [toast, setToast] = useState("");
-  const [latestPush, setLatestPush] = useState<PushRecord | null>(null);
-
   const nextTask = tasks.find((task) => task.state === "doing") ?? tasks[0];
-
-  useEffect(() => {
-    fetchPushRecords().then((records) => setLatestPush(records[0] ?? null));
-  }, []);
 
   useEffect(() => {
     localStorage.setItem("neo_health_logs", JSON.stringify(healthLogs));
@@ -155,16 +168,20 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const recentTags = useMemo(() => {
-    const words = notes
-      .flatMap((note) => note.text.match(/[\u4e00-\u9fa5A-Za-z0-9]{2,}/g) ?? [])
-      .filter((word) => !["今天", "一个", "这个", "可以", "需要"].includes(word));
-    return Array.from(new Set(words)).slice(0, 8);
-  }, [notes]);
 
   function notify(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 1800);
+  }
+
+  function deleteNotes(ids: string[]) {
+    setNotes((prev) => prev.filter((n) => !ids.includes(n.id)));
+    notify(`已删除 ${ids.length} 条记录`);
+  }
+
+  function updateNote(id: string, text: string, kind: Note["kind"]) {
+    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, text, kind } : n)));
+    notify("笔记已更新");
   }
 
   async function submitCapture(mode: CaptureMode) {
@@ -343,21 +360,6 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <header className="app-header">
-        <div className="brand-lockup">
-          <div className="brand-mark" aria-hidden="true">
-            <span className="neo-buddy">
-              <i className="neo-eye left" />
-              <i className="neo-eye right" />
-            </span>
-          </div>
-          <div>
-            <p>Personal AI</p>
-            <h1>neo</h1>
-          </div>
-        </div>
-      </header>
-
       <main className="app-main">
         {activeView === "ai" && (
           <AIView
@@ -365,7 +367,7 @@ export default function App() {
             nextTask={nextTask}
             recentNotes={notes.slice(0, 2)}
             inboxCount={notes.filter((note) => note.kind === "inbox").length}
-            latestPush={latestPush}
+            onNotify={notify}
             onOpen={setActiveView}
             todaySleep={healthLogs.find((l) => l.date === todayStr() && l.category === "sleep")}
             todayDiarrhea={healthLogs
@@ -380,25 +382,12 @@ export default function App() {
             onAddWater={addWaterCup}
           />
         )}
-        {activeView === "memory" && <MemoryView notes={notes} recentTags={recentTags} />}
+        {activeView === "memory" && <MemoryView notes={notes} onDelete={deleteNotes} onUpdate={updateNote} />}
         {activeView === "push" && <PushView onNotify={notify} />}
         {activeView === "health" && <HealthView logs={healthLogs} onLogHealth={setLogModal} onAddWater={addWaterCup} onSaveMood={saveMood} />}
       </main>
 
       <section className="app-dock">
-        <Composer
-          text={captureText}
-          attachments={attachments}
-          fileInputRef={fileInputRef}
-          onTextChange={setCaptureText}
-          onFiles={addAttachments}
-          onRemoveAttachment={removeAttachment}
-          isListening={isListening}
-          onVoice={toggleVoiceInput}
-          onSave={() => submitCapture("save")}
-          onOrganize={() => submitCapture("organize")}
-        />
-
         <nav className="bottom-nav" aria-label="主导航">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -421,12 +410,97 @@ export default function App() {
   );
 }
 
+function PomodoroCard({ onNotify }: { onNotify: (msg: string) => void }) {
+  const FOCUS = 25 * 60;
+  const BREAK_OPTS = [5, 10, 15, 20];
+
+  const [phase, setPhase] = useState<"idle" | "focus" | "break">("idle");
+  const [secsLeft, setSecsLeft] = useState(FOCUS);
+  const [sessions, setSessions] = useState(0);
+  const [breakMins, setBreakMins] = useState(10);
+
+  useEffect(() => {
+    if (phase === "idle") return;
+    const id = window.setInterval(() => setSecsLeft((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  useEffect(() => {
+    if (secsLeft !== 0 || phase === "idle") return;
+    if (phase === "focus") {
+      setSessions((s) => s + 1);
+      setPhase("break");
+      setSecsLeft(breakMins * 60);
+      onNotify("专注结束，发呆一会儿 🌿");
+    } else {
+      setPhase("idle");
+      setSecsLeft(FOCUS);
+      onNotify("发呆结束，继续加油 ✨");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secsLeft]);
+
+  function startFocus() { setPhase("focus"); setSecsLeft(FOCUS); }
+  function startBreak() { setPhase("break"); setSecsLeft(breakMins * 60); }
+  function stop() { setPhase("idle"); setSecsLeft(FOCUS); }
+
+  const total = phase === "break" ? breakMins * 60 : FOCUS;
+  const pct = Math.round((1 - secsLeft / total) * 100);
+  const mm = String(Math.floor(secsLeft / 60)).padStart(2, "0");
+  const ss = String(secsLeft % 60).padStart(2, "0");
+
+  return (
+    <div className={cx("pomodoro-card", phase !== "idle" && phase)}>
+      <div className="pomo-head">
+        <span className="pomo-label">
+          {phase === "idle" ? "专注 · 发呆" : phase === "focus" ? "🍅 专注中" : "☁️ 发呆放空"}
+        </span>
+        {sessions > 0 && <span className="pomo-sessions">今日 {sessions} 轮</span>}
+      </div>
+
+      {phase !== "idle" ? (
+        <>
+          <div className="pomo-timer">{mm}:{ss}</div>
+          <div className="pomo-bar">
+            <div className="pomo-bar-fill" style={{ width: `${pct}%` }} />
+          </div>
+          <div className="pomo-actions">
+            {phase === "focus" && (
+              <button className="pomo-btn secondary" onClick={startBreak}>提前发呆</button>
+            )}
+            <button className="pomo-btn ghost" onClick={stop}>放弃</button>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="pomo-break-picker">
+            <span className="pomo-picker-label">发呆时长</span>
+            <div className="pomo-picker-opts">
+              {BREAK_OPTS.map((m) => (
+                <button
+                  key={m}
+                  className={cx("pomo-picker-opt", breakMins === m && "active")}
+                  onClick={() => setBreakMins(m)}
+                >{m}'</button>
+              ))}
+            </div>
+          </div>
+          <div className="pomo-idle-actions">
+            <button className="pomo-focus-btn" onClick={startFocus}>🍅 开始专注</button>
+            <button className="pomo-break-btn" onClick={startBreak}>☁️ 发呆放空</button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function AIView({
   result,
   nextTask,
   recentNotes,
   inboxCount,
-  latestPush,
+  onNotify,
   onOpen,
   todaySleep,
   todayDiarrhea,
@@ -442,7 +516,7 @@ function AIView({
   nextTask: Task;
   recentNotes: Note[];
   inboxCount: number;
-  latestPush: PushRecord | null;
+  onNotify: (msg: string) => void;
   onOpen: (view: AppView) => void;
   todaySleep: HealthEntry | undefined;
   todayDiarrhea: number;
@@ -454,22 +528,13 @@ function AIView({
   onCancelSleep: () => void;
   onAddWater: () => void;
 }) {
-  const [pushReaderOpen, setPushReaderOpen] = useState(false);
 
   return (
     <section className="screen-stack home-surface">
       <div className="hero-card">
-        <div className="hero-icon">
-          <Sparkles size={22} />
-        </div>
         <div>
-          <h2>{result ? result.title : "今天处理什么？"}</h2>
-          {!result && (
-            <p className="hero-focus">
-              <Target size={14} />
-              <span>下一步 · {nextTask.title}</span>
-            </p>
-          )}
+          <h2>{result ? result.title : (() => { const h = new Date().getHours(); return h < 12 ? "早上好" : h < 18 ? "下午好" : "晚上好"; })()}</h2>
+          <span className="hero-build-ver">v{__APP_VERSION__}</span>
         </div>
         {!result && (
           <div className="mascot-scene" aria-hidden="true">
@@ -507,44 +572,7 @@ function AIView({
         </article>
       )}
 
-      <div
-        className={cx("home-push-card", !!latestPush && "is-clickable")}
-        onClick={() => latestPush && setPushReaderOpen(true)}
-      >
-        <div className="home-push-meta">
-          <span className="home-push-source">
-            <Newspaper size={12} />
-            {latestPush?.channel ?? "日报"}
-          </span>
-          <span className="home-push-date">{latestPush?.createdAt ?? "待同步"}</span>
-        </div>
-        <h3 className="home-push-title">{latestPush?.title ?? "明早 08:30 自动同步"}</h3>
-        <p className="home-push-excerpt">
-          {latestPush?.excerpt ? stripMarkdown(latestPush.excerpt) : "AI HOT 每日精选，每天自动送到这里。"}
-        </p>
-        {latestPush && <span className="home-push-read">阅读全文 →</span>}
-      </div>
-
-      {pushReaderOpen && latestPush && (
-        <div className="push-reader-overlay" onClick={() => setPushReaderOpen(false)}>
-          <div className="push-reader" onClick={(e) => e.stopPropagation()}>
-            <div className="push-reader-head">
-              <div>
-                <p className="push-reader-meta">{latestPush.channel} · {latestPush.createdAt}</p>
-                <h2>{latestPush.title}</h2>
-              </div>
-              <button className="icon-button" onClick={() => setPushReaderOpen(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="push-reader-body">
-              {latestPush.content
-                ? <ReportMarkdown text={latestPush.content} />
-                : <p style={{ color: "var(--muted)" }}>暂无内容</p>}
-            </div>
-          </div>
-        </div>
-      )}
+      <PomodoroCard onNotify={onNotify} />
 
       <div className="home-health">
         <div className="home-health-hd">
@@ -555,85 +583,54 @@ function AIView({
           </button>
         </div>
 
-        {/* 睡眠行 */}
-        <div className="health-metric-row">
-          <span className="hmr-icon sleep"><Moon size={14} /></span>
-          <div className="hmr-body">
-            <p className="hmr-label">睡眠</p>
-            {todaySleep ? (
-              <div className="hmr-val">
+        <div className="health-grid">
+          {/* 睡眠 */}
+          <div className={cx("hg-card", !!sleepTracking && !todaySleep && "tracking")}>
+            <span className="hg-icon sleep"><Moon size={16} /></span>
+            <div className="hg-val">
+              {todaySleep ? (
                 <strong>{todaySleep.sleepHours}h</strong>
-                <span>{todaySleep.sleepStart} → {todaySleep.sleepEnd}</span>
-              </div>
-            ) : sleepTracking ? (
-              <div className="hmr-val is-tracking">
-                <span className="hmr-pulse" />
-                追踪中 · 入睡 {sleepTracking.startTime}
-                <em>预计 {calcSleepHours(sleepTracking.startTime, "07:30")}h</em>
-              </div>
-            ) : (
-              <div className="hmr-val is-empty">未记录</div>
-            )}
-          </div>
-          <div className="hmr-actions">
-            {todaySleep ? (
-              <button className="hmr-btn ghost" onClick={() => onLogHealth("sleep")}>修改</button>
-            ) : sleepTracking ? (
-              <div className="hmr-actions-col">
-                <button className="hmr-btn confirm" onClick={onFinishSleep}>起床了</button>
-                <button className="hmr-btn ghost hmr-btn-xs" onClick={onCancelSleep}>取消追踪</button>
-              </div>
-            ) : (
-              <button className="hmr-btn accent" onClick={onStartSleep}>
-                <Moon size={12} />入睡
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* 肠胃行 */}
-        <div className="health-metric-row">
-          <span className="hmr-icon digestion"><Droplets size={14} /></span>
-          <div className="hmr-body">
-            <p className="hmr-label">肠胃</p>
-            <div className={cx("hmr-val", todayDiarrhea > 0 && "is-warn")}>
-              {todayDiarrhea > 0 ? (
-                <>腹泻 <strong>{todayDiarrhea}</strong> 次</>
+              ) : sleepTracking ? (
+                <><span className="hg-pulse" /><span style={{ fontSize: 12, color: "var(--green)" }}>追踪中</span></>
               ) : (
-                "今日正常"
-              )}
-              <span className={cx("hmr-pill", todayDiarrhea > 0 ? "warn" : "ok")}>
-                {todayDiarrhea > 0 ? "注意" : "正常"}
-              </span>
-            </div>
-          </div>
-          <div className="hmr-actions">
-            <button className="hmr-btn ghost" onClick={() => onLogHealth("digestion")}>记录</button>
-          </div>
-        </div>
-
-        {/* 喝水行 */}
-        <div className="health-metric-row">
-          <span className="hmr-icon water"><Droplet size={14} /></span>
-          <div className="hmr-body">
-            <p className="hmr-label">喝水</p>
-            <div className="hmr-val">
-              {todayWater > 0 ? (
-                <><strong>{todayWater}</strong><span>大杯 · 目标 {WATER_GOAL} 杯</span></>
-              ) : (
-                <span className="is-empty">未记录</span>
-              )}
-              {todayWater > 0 && (
-                <span className={cx("hmr-pill", todayWater >= WATER_GOAL ? "ok" : "neutral")}>
-                  {todayWater >= WATER_GOAL ? "达标" : `${WATER_GOAL - todayWater} 杯`}
-                </span>
+                <span className="hg-empty">—</span>
               )}
             </div>
-          </div>
-          <div className="hmr-actions">
-            <button className="hmr-btn accent" onClick={onAddWater}>
-              <Droplet size={12} />+1
+            <span className="hg-label">睡眠</span>
+            <button
+              className="hg-btn"
+              onClick={todaySleep ? () => onLogHealth("sleep") : sleepTracking ? onFinishSleep : onStartSleep}
+            >
+              {todaySleep ? "修改" : sleepTracking ? "起床" : "入睡"}
             </button>
+          </div>
+
+          {/* 肠胃 */}
+          <div className={cx("hg-card", todayDiarrhea > 0 && "warn")}>
+            <span className="hg-icon digestion"><Droplets size={16} /></span>
+            <div className="hg-val">
+              {todayDiarrhea > 0 ? (
+                <strong className="warn">{todayDiarrhea}次</strong>
+              ) : (
+                <strong>正常</strong>
+              )}
+            </div>
+            <span className="hg-label">肠胃</span>
+            <button className="hg-btn" onClick={() => onLogHealth("digestion")}>记录</button>
+          </div>
+
+          {/* 喝水 */}
+          <div className={cx("hg-card", todayWater >= WATER_GOAL && "done")}>
+            <span className="hg-icon water"><Droplet size={16} /></span>
+            <div className="hg-val">
+              {todayWater > 0 ? (
+                <strong>{todayWater}杯</strong>
+              ) : (
+                <span className="hg-empty">—</span>
+              )}
+            </div>
+            <span className="hg-label">喝水</span>
+            <button className="hg-btn" onClick={onAddWater}>+1杯</button>
           </div>
         </div>
       </div>
@@ -644,9 +641,9 @@ function AIView({
             <Database size={18} />
           </span>
           <div>
-            <p>笔记</p>
+            <p>随手记</p>
             <h3>{inboxCount > 0 ? `${inboxCount} 条待整理` : "全部已整理"}</h3>
-            <span className="entry-sub">{recentNotes[0]?.text ?? "记忆流"}</span>
+            <span className="entry-sub">{recentNotes[0]?.text ?? "随手记"}</span>
           </div>
         </button>
         <button className="entry-card" onClick={() => onOpen("health")}>
@@ -664,26 +661,157 @@ function AIView({
   );
 }
 
-function MemoryView({ notes, recentTags }: { notes: Note[]; recentTags: string[] }) {
+function MemoryView({ notes, onDelete, onUpdate }: {
+  notes: Note[];
+  onDelete: (ids: string[]) => void;
+  onUpdate: (id: string, text: string, kind: Note["kind"]) => void;
+}) {
+  const [filter, setFilter] = useState<NoteFilter>("all");
+  const [search, setSearch] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [isManaging, setIsManaging] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
+
+  const filtered = notes
+    .filter((n) => filter === "all" || n.kind === filter)
+    .filter((n) => !search || n.text.toLowerCase().includes(search.toLowerCase()));
+
+  const counts: Record<NoteFilter, number> = {
+    all: notes.length,
+    inbox: notes.filter((n) => n.kind === "inbox").length,
+    knowledge: notes.filter((n) => n.kind === "knowledge").length,
+    task: notes.filter((n) => n.kind === "task").length,
+    goal: notes.filter((n) => n.kind === "goal").length
+  };
+
+  const filterItems: Array<[NoteFilter, string]> = [
+    ["all", "全部"],
+    ["inbox", "待整理"],
+    ["knowledge", "记忆"],
+    ["task", "任务"],
+    ["goal", "目标"]
+  ];
+
+  function exitManage() {
+    setIsManaging(false);
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
+
   return (
     <section className="screen-stack">
       <div className="content-head floating">
         <div>
-          <p>记忆流</p>
-          <h2>全部记录</h2>
+          <p>随手记</p>
+          <h2>全部笔记</h2>
         </div>
-        <Database size={20} />
+        <button
+          className={cx("manage-toggle", isManaging && "active")}
+          onClick={() => (isManaging ? exitManage() : setIsManaging(true))}
+        >
+          {isManaging ? "完成" : "管理"}
+        </button>
       </div>
-      <div className="tag-strip">
-        {recentTags.map((tag) => (
-          <span key={tag}>{tag}</span>
+
+      {!isManaging && (
+        <div className="memory-search">
+          <Search size={15} />
+          <input
+            placeholder="搜索记录..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button onClick={() => setSearch("")}>
+              <X size={14} />
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="filter-tabs">
+        {filterItems.map(([id, label]) => (
+          <button
+            key={id}
+            className={cx("filter-tab", filter === id && "active")}
+            onClick={() => setFilter(id)}
+          >
+            {label}
+            <span className="filter-count">{counts[id]}</span>
+          </button>
         ))}
       </div>
-      <div className="panel-card note-list">
-        {notes.map((note) => (
-          <NoteRow key={note.id} note={note} />
-        ))}
+
+      {isManaging && (
+        <div className="manage-action-bar">
+          <button
+            className="manage-select-all"
+            onClick={() =>
+              setSelectedIds(allSelected ? new Set() : new Set(filtered.map((n) => n.id)))
+            }
+          >
+            {allSelected ? "取消全选" : "全选"}
+          </button>
+          <span className="manage-count">
+            {selectedIds.size > 0 ? `已选 ${selectedIds.size} 条` : "选择笔记"}
+          </span>
+          <button
+            className="manage-delete-btn"
+            disabled={selectedIds.size === 0}
+            onClick={() => {
+              onDelete(Array.from(selectedIds));
+              setSelectedIds(new Set());
+              setIsManaging(false);
+            }}
+          >
+            删除
+          </button>
+        </div>
+      )}
+
+      <div className="note-cards">
+        {filtered.length === 0 ? (
+          <div className="memory-empty">
+            <Database size={28} />
+            <p>{search ? `没有包含「${search}」的记录` : "暂无记录"}</p>
+          </div>
+        ) : (
+          filtered.map((note) => (
+            <NoteCard
+              key={note.id}
+              note={note}
+              expanded={expandedId === note.id}
+              onToggle={() => setExpandedId((prev) => (prev === note.id ? null : note.id))}
+              isManaging={isManaging}
+              isSelected={selectedIds.has(note.id)}
+              onSelect={() => toggleSelect(note.id)}
+              onEdit={() => setEditingNote(note)}
+            />
+          ))
+        )}
       </div>
+
+      {editingNote && (
+        <NoteEditModal
+          note={editingNote}
+          onSave={(text, kind) => {
+            onUpdate(editingNote.id, text, kind);
+            setEditingNote(null);
+          }}
+          onClose={() => setEditingNote(null)}
+        />
+      )}
     </section>
   );
 }
@@ -727,71 +855,47 @@ function PushView({ onNotify }: { onNotify: (message: string) => void }) {
   }
 
   return (
-    <section className="screen-stack">
+    <section className="screen-stack push-view">
       <div className="content-head floating">
         <div>
-          <p>每日自动化</p>
-          <h2>推送</h2>
+          <p>每日精选</p>
+          <h2>AI 日报</h2>
         </div>
-        <BellRing size={20} />
+        <button className="icon-button" onClick={triggerPush} disabled={running} aria-label="立即推送">
+          <RefreshCcw size={17} className={running ? "spin" : ""} />
+        </button>
       </div>
 
-      <section className="panel-card push-hub">
-        <div className="push-hero">
-          <div>
-            <p>AI HOT 每日精选 · Hermes 调度</p>
-            <h3>早上 {status.schedule} 自动同步</h3>
-          </div>
-          <span className={cx("server-dot", status.server === "online" && "online")} />
-        </div>
+      <div className="push-status-bar">
+        <span className={cx("push-dot-sm", status.server === "online" && "online")} />
+        <span>{status.server === "online" ? "服务器在线" : "服务器离线"}</span>
+        <span className="push-sep">·</span>
+        <span>Hermes {status.hermes === "ready" ? "就绪" : "待确认"}</span>
+        <span className="push-sep">·</span>
+        <span>每日 {status.schedule}</span>
+      </div>
 
-        <div className="push-status-grid">
-          <StatusTile icon={Server} label="服务器" value={status.server === "online" ? "在线" : "待接入"} />
-          <StatusTile icon={Newspaper} label="Hermes" value={status.hermes === "ready" ? "就绪" : "待确认"} />
-          <StatusTile icon={Send} label="飞书" value={status.feishu === "connected" ? "已连接" : "未配置"} />
-        </div>
-
-        <div className="push-meta">
-          <p>上次：{status.lastRun}</p>
-          <p>下次：{status.nextRun}</p>
-        </div>
-
-        <div className="push-actions">
-          <button className="secondary-button" onClick={testFeishu}>
-            <Send size={16} />
-            测试连接
-          </button>
-          <button className="primary-button" disabled={running} onClick={triggerPush}>
-            <Sparkles size={16} />
-            {running ? "触发中" : "立即推送"}
-          </button>
-        </div>
-      </section>
-
-      <section className="panel-card push-latest">
-        <div className="push-latest-head">
-          <div>
-            <p>最新日报</p>
-            <h3>{latest?.title ?? "明早自动同步到这里"}</h3>
+      {latest ? (
+        <article className="push-report-card">
+          <div className="push-report-top">
+            <span>{latest.channel}</span>
+            <span>{latest.createdAt}</span>
           </div>
-          <span>{latest?.createdAt ?? status.nextRun}</span>
+          <h3 className="push-report-h">{latest.title}</h3>
+          {latest.content ? (
+            <ReportMarkdown text={latest.content} />
+          ) : latest.excerpt ? (
+            <p className="push-report-excerpt">{stripMarkdown(latest.excerpt)}</p>
+          ) : null}
+        </article>
+      ) : (
+        <div className="push-empty-card">
+          <Newspaper size={26} />
+          <p>明早 {status.schedule} 自动同步</p>
+          <span>AI HOT 每日精选</span>
         </div>
-        {latest?.content ? (
-          <ReportMarkdown text={latest.content} />
-        ) : (
-          <div className="push-empty">
-            <Newspaper size={22} />
-            <span>AI HOT 跑完后，日报正文会留在这里。</span>
-          </div>
-        )}
-        {records.length > 1 && (
-          <div className="push-history">
-            {records.slice(1, 4).map((record) => (
-              <span key={record.id}>{record.createdAt}</span>
-            ))}
-          </div>
-        )}
-      </section>
+      )}
+
     </section>
   );
 }
@@ -1035,20 +1139,120 @@ function createDailySummary(notes: Note[], goals: Goal[], tasks: Task[]) {
   return `${pendingCount} 条待整理。今天先推进：${doing.title}。`;
 }
 
-function NoteRow({ note }: { note: Note }) {
+function NoteCard({ note, expanded, onToggle, isManaging, isSelected, onSelect, onEdit }: {
+  note: Note;
+  expanded: boolean;
+  onToggle: () => void;
+  isManaging: boolean;
+  isSelected: boolean;
+  onSelect: () => void;
+  onEdit: () => void;
+}) {
+  const isLong = note.text.length > 100;
+  const displayText = isLong && !expanded ? note.text.slice(0, 100) + "…" : note.text;
+
   return (
-    <article className="note-row">
-      <KindIcon kind={note.kind} />
-      <div>
-        <h3>{note.text}</h3>
-        <p>
-          {note.createdAt} / {kindLabel(note.kind)}
-          {note.attachments?.length ? ` / ${note.attachments.length} 个附件` : ""}
-        </p>
-        {note.attachments?.length ? <NoteAttachments attachments={note.attachments} /> : null}
+    <article
+      className={cx("note-card", expanded && "expanded", isSelected && "selected")}
+      onClick={isManaging ? onSelect : onToggle}
+    >
+      <div className="note-card-head">
+        {isManaging && (
+          <span className="note-card-checkbox">
+            {isSelected ? <CheckCircle2 size={19} /> : <Circle size={19} />}
+          </span>
+        )}
+        <KindPill kind={note.kind} />
+        <span className="note-card-spacer" />
+        <span className="note-card-time">
+          {note.date ? formatNoteDate(note.date) + " · " : ""}
+          {note.createdAt}
+        </span>
+        {!isManaging && (
+          <button
+            className="note-edit-icon"
+            onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          >
+            <Pencil size={13} />
+          </button>
+        )}
       </div>
+      <p className="note-card-text">{displayText}</p>
+      {note.attachments?.length ? (
+        <div className="note-card-footer">
+          <Paperclip size={12} />
+          <span>{note.attachments.length} 个附件</span>
+        </div>
+      ) : null}
+      {isLong && !isManaging && (
+        <span className="note-expand-btn">{expanded ? "收起 ↑" : "展开 ↓"}</span>
+      )}
     </article>
   );
+}
+
+function NoteEditModal({ note, onSave, onClose }: {
+  note: Note;
+  onSave: (text: string, kind: Note["kind"]) => void;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState(note.text);
+  const [kind, setKind] = useState<Note["kind"]>(note.kind);
+
+  const kindOptions: Array<[Note["kind"], string]> = [
+    ["inbox", "待整理"],
+    ["knowledge", "记忆"],
+    ["task", "任务"],
+    ["goal", "目标"]
+  ];
+
+  return (
+    <div className="health-modal-overlay" onClick={onClose}>
+      <div className="health-modal note-edit-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="health-modal-head">
+          <h3>编辑笔记</h3>
+          <button className="icon-button" onClick={onClose}>
+            <X size={16} />
+          </button>
+        </div>
+        <div className="note-kind-picker">
+          {kindOptions.map(([k, label]) => (
+            <button
+              key={k}
+              className={cx("note-kind-chip", k, kind === k && "active")}
+              onClick={() => setKind(k)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <textarea
+          className="note-edit-textarea"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={6}
+          autoFocus
+        />
+        <button
+          className="primary-button full"
+          disabled={!text.trim()}
+          onClick={() => onSave(text.trim(), kind)}
+        >
+          保存
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function formatNoteDate(date: string): string {
+  const today = todayStr();
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  const yesterday = d.toISOString().slice(0, 10);
+  if (date === today) return "今天";
+  if (date === yesterday) return "昨天";
+  return date.slice(5).replace("-", "/");
 }
 
 function TaskRow({ task, featured = false }: { task: Task; featured?: boolean }) {

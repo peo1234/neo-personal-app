@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "cf:preview": "wrangler pages dev dist --compatibility-date=2026-06-23",
-    "cf:deploy": "wrangler pages deploy dist --project-name neo-personal-app"
+    "cf:deploy": "wrangler pages deploy dist --project-name neo-personal-app",
+    "deploy": "node -e \"const fs=require('fs');const v=parseInt(fs.readFileSync('./src/version.txt','utf8').trim(),10);fs.writeFileSync('./src/version.txt',String(v+1));console.log('version:',v+1)\" && npm run build && tar czf - -C dist . | ssh meixi \"sudo tar xzf - -C /var/www/neo/\""
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

@@ -59,26 +59,7 @@ export const tasks: Task[] = [
   }
 ];
 
-export const notes: Note[] = [
-  {
-    id: "note-1",
-    text: "先固定首页。",
-    kind: "knowledge",
-    createdAt: "08:45"
-  },
-  {
-    id: "note-2",
-    text: "Codex 放进执行队列。",
-    kind: "task",
-    createdAt: "10:12"
-  },
-  {
-    id: "note-3",
-    text: "首页只保留关键动作。",
-    kind: "inbox",
-    createdAt: "12:30"
-  }
-];
+export const notes: Note[] = [];
 
 export const agentSources: AgentSource[] = [
   {

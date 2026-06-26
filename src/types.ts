@@ -46,6 +46,7 @@ export interface Note {
   text: string;
   kind: "inbox" | "knowledge" | "task" | "goal";
   createdAt: string;
+  date?: string;
   attachments?: Attachment[];
 }
 
