@@ -61,6 +61,39 @@ interface CodexDraft {
   createdAt: string;
 }
 
+const DAILY_CARDS = [
+  { emoji: "🦫", title: "今天你是水豚", body: "随遇而安，泡澡优先" },
+  { emoji: "🌿", title: "今日发呆任务", body: "闭眼，数 10 个呼吸" },
+  { emoji: "🐠", title: "今天你是小丑鱼", body: "家就在附近，不用跑太远" },
+  { emoji: "☁️", title: "今日发呆任务", body: "想象自己是一片云，飘着就好" },
+  { emoji: "🦔", title: "今天你是刺猬", body: "看着扎，其实只是需要空间" },
+  { emoji: "🌸", title: "今日发呆任务", body: "找窗外最远处的树，看一会儿" },
+  { emoji: "🐢", title: "今天你是乌龟", body: "慢下来也没关系，壳是自己的家" },
+  { emoji: "🍵", title: "今日发呆任务", body: "泡杯茶，就盯着水汽发一会呆" },
+  { emoji: "🦭", title: "今天你是海豹", body: "懒得动很正常，晒太阳是正事" },
+  { emoji: "🌙", title: "今日发呆任务", body: "今天允许自己早一点睡" },
+  { emoji: "🦦", title: "今天你是水獭", body: "睡觉时记得拉好朋友的手" },
+  { emoji: "🍃", title: "今日发呆任务", body: "深呼吸，然后慢慢呼出" },
+  { emoji: "🐨", title: "今天你是考拉", body: "一天睡22小时，效率极高" },
+  { emoji: "✨", title: "今日发呆任务", body: "回忆今天一个细小的好瞬间" },
+  { emoji: "🦙", title: "今天你是羊驼", body: "淡定是一种天赋" },
+  { emoji: "🌊", title: "今日发呆任务", body: "想象海浪一次次拍岸，再退去" },
+  { emoji: "🐼", title: "今天你是熊猫", body: "吃竹子也是一种修行" },
+  { emoji: "🍀", title: "今日发呆任务", body: "把手放在心脏上，感受一下它" },
+  { emoji: "🦥", title: "今天你是树懒", body: "慢即是快，挂着也是姿势" },
+  { emoji: "🌻", title: "今日发呆任务", body: "找一件小事，做得认真一些" },
+  { emoji: "🐸", title: "今天你是青蛙", body: "井里也有天，安心就好" },
+  { emoji: "🦊", title: "今天你是狐狸", body: "聪明就是知道什么时候装糊涂" },
+  { emoji: "🫶", title: "今日发呆任务", body: "今天对自己好一点就够了" },
+  { emoji: "🐧", title: "今天你是企鹅", body: "摇摇晃晃也能走到目的地" },
+  { emoji: "🍄", title: "今日发呆任务", body: "什么都不想，也是一种状态" },
+  { emoji: "🌠", title: "今日发呆任务", body: "许个愿，不用太具体" },
+  { emoji: "🦜", title: "今天你是鹦鹉", body: "重复说也是一种坚持" },
+  { emoji: "🐉", title: "今天你是龙", body: "偶尔可以大声一点" },
+  { emoji: "🫧", title: "今日发呆任务", body: "吹个泡泡，看它慢慢飘走" },
+  { emoji: "🌈", title: "今日发呆任务", body: "今天选一个颜色代表你的状态" },
+];
+
 const starterPrompt =
   "把这个个人助手 app 的第一版后端接口设计出来：记忆流、AI 整理、目标总结、Codex 任务队列。要求包含数据模型、权限边界和最小可运行 API。";
 
@@ -411,13 +444,11 @@ export default function App() {
 }
 
 function PomodoroCard({ onNotify }: { onNotify: (msg: string) => void }) {
-  const FOCUS = 25 * 60;
-  const BREAK_OPTS = [5, 10, 15, 20];
-
   const [phase, setPhase] = useState<"idle" | "focus" | "break">("idle");
-  const [secsLeft, setSecsLeft] = useState(FOCUS);
+  const [secsLeft, setSecsLeft] = useState(25 * 60);
   const [sessions, setSessions] = useState(0);
-  const [breakMins, setBreakMins] = useState(10);
+  const [focusMins, setFocusMins] = useState(25);
+  const [breakMins, setBreakMins] = useState(5);
 
   useEffect(() => {
     if (phase === "idle") return;
@@ -434,17 +465,17 @@ function PomodoroCard({ onNotify }: { onNotify: (msg: string) => void }) {
       onNotify("专注结束，发呆一会儿 🌿");
     } else {
       setPhase("idle");
-      setSecsLeft(FOCUS);
+      setSecsLeft(focusMins * 60);
       onNotify("发呆结束，继续加油 ✨");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [secsLeft]);
 
-  function startFocus() { setPhase("focus"); setSecsLeft(FOCUS); }
+  function startFocus() { setPhase("focus"); setSecsLeft(focusMins * 60); }
   function startBreak() { setPhase("break"); setSecsLeft(breakMins * 60); }
-  function stop() { setPhase("idle"); setSecsLeft(FOCUS); }
+  function stop() { setPhase("idle"); setSecsLeft(focusMins * 60); }
 
-  const total = phase === "break" ? breakMins * 60 : FOCUS;
+  const total = phase === "break" ? breakMins * 60 : focusMins * 60;
   const pct = Math.round((1 - secsLeft / total) * 100);
   const mm = String(Math.floor(secsLeft / 60)).padStart(2, "0");
   const ss = String(secsLeft % 60).padStart(2, "0");
@@ -460,6 +491,7 @@ function PomodoroCard({ onNotify }: { onNotify: (msg: string) => void }) {
 
       {phase !== "idle" ? (
         <>
+          {phase === "break" && <div className="breath-orb" />}
           <div className="pomo-timer">{mm}:{ss}</div>
           <div className="pomo-bar">
             <div className="pomo-bar-fill" style={{ width: `${pct}%` }} />
@@ -472,26 +504,165 @@ function PomodoroCard({ onNotify }: { onNotify: (msg: string) => void }) {
           </div>
         </>
       ) : (
-        <>
-          <div className="pomo-break-picker">
-            <span className="pomo-picker-label">发呆时长</span>
-            <div className="pomo-picker-opts">
-              {BREAK_OPTS.map((m) => (
-                <button
-                  key={m}
-                  className={cx("pomo-picker-opt", breakMins === m && "active")}
-                  onClick={() => setBreakMins(m)}
-                >{m}'</button>
-              ))}
+        <div className="pomo-idle-actions">
+          <div className="pomo-action-group">
+            <button className="pomo-focus-btn" onClick={startFocus}>🍅 开始专注</button>
+            <div className="pomo-stepper">
+              <button className="pomo-step-btn" onClick={() => setFocusMins(m => Math.max(5, m - 5))}>−</button>
+              <span>{focusMins}'</span>
+              <button className="pomo-step-btn" onClick={() => setFocusMins(m => Math.min(180, m + 5))}>+</button>
             </div>
           </div>
-          <div className="pomo-idle-actions">
-            <button className="pomo-focus-btn" onClick={startFocus}>🍅 开始专注</button>
+          <div className="pomo-action-group">
             <button className="pomo-break-btn" onClick={startBreak}>☁️ 发呆放空</button>
+            <div className="pomo-stepper">
+              <button className="pomo-step-btn" onClick={() => setBreakMins(m => Math.max(5, m - 5))}>−</button>
+              <span>{breakMins}'</span>
+              <button className="pomo-step-btn" onClick={() => setBreakMins(m => Math.min(60, m + 5))}>+</button>
+            </div>
           </div>
-        </>
+        </div>
       )}
     </div>
+  );
+}
+
+function ScratchCard() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [revealed, setRevealed] = useState(false);
+  const isDrawing = useRef(false);
+
+  const today = todayStr();
+  const seed = today.split("-").reduce((acc, v) => acc + parseInt(v, 10), 0);
+  const card = DAILY_CARDS[seed % DAILY_CARDS.length];
+
+  useEffect(() => {
+    if (localStorage.getItem("neo_scratch_date") === today) {
+      setRevealed(true);
+      return;
+    }
+    const id = requestAnimationFrame(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+      canvas.width = w * dpr;
+      canvas.height = h * dpr;
+      ctx.scale(dpr, dpr);
+      const grad = ctx.createLinearGradient(0, 0, w, h);
+      grad.addColorStop(0, "#c8e4cc");
+      grad.addColorStop(1, "#b8d8be");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(46, 125, 90, 0.5)";
+      ctx.font = `500 13px "Segoe UI", "PingFang SC", sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("搓一搓 ✦", w / 2, h / 2);
+    });
+    return () => cancelAnimationFrame(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function getXY(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
+    const rect = canvasRef.current!.getBoundingClientRect();
+    if ("touches" in e) {
+      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+    }
+    return { x: (e as React.MouseEvent).clientX - rect.left, y: (e as React.MouseEvent).clientY - rect.top };
+  }
+
+  function scratch(x: number, y: number) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    ctx.arc(x, y, 22, 0, Math.PI * 2);
+    ctx.fill();
+    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let transparent = 0;
+    for (let i = 3; i < data.length; i += 16) {
+      if (data[i] < 64) transparent++;
+    }
+    if ((transparent * 4) / (canvas.width * canvas.height) > 0.45) {
+      setRevealed(true);
+      localStorage.setItem("neo_scratch_date", today);
+    }
+  }
+
+  return (
+    <div className="scratch-wrap">
+      <div className="scratch-content">
+        <span className="scratch-emoji">{card.emoji}</span>
+        <div>
+          <p className="scratch-title">{card.title}</p>
+          <p className="scratch-body">{card.body}</p>
+        </div>
+      </div>
+      {!revealed && (
+        <canvas
+          ref={canvasRef}
+          className="scratch-canvas"
+          onMouseDown={(e) => { isDrawing.current = true; const { x, y } = getXY(e); scratch(x, y); }}
+          onMouseMove={(e) => { if (isDrawing.current) { const { x, y } = getXY(e); scratch(x, y); } }}
+          onMouseUp={() => { isDrawing.current = false; }}
+          onMouseLeave={() => { isDrawing.current = false; }}
+          onTouchStart={(e) => { isDrawing.current = true; const { x, y } = getXY(e); scratch(x, y); }}
+          onTouchMove={(e) => { e.preventDefault(); if (isDrawing.current) { const { x, y } = getXY(e); scratch(x, y); } }}
+          onTouchEnd={() => { isDrawing.current = false; }}
+        />
+      )}
+    </div>
+  );
+}
+
+const TICKER_FALLBACK = [
+  "① Claude 4.5 发布，推理与速度双提升",
+  "② Gemini Ultra 2 正式上线，支持 100 万 token 上下文",
+  "③ OpenAI 推出 o3 模型，数学竞赛超越人类水平",
+  "④ Apple 发布 Apple Intelligence 2.0，深度整合 Siri",
+  "⑤ 国内大模型混战加剧，百模大战进入下半场",
+];
+
+function NewsTicker({ onOpen }: { onOpen: (view: AppView) => void }) {
+  const [headlines, setHeadlines] = useState<string[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetchPushRecords().then(records => {
+      if (records.length) {
+        const content = records[0].content ?? records[0].excerpt ?? "";
+        const parsed = content.split("\n")
+          .map(l => l.trim())
+          .filter(l => /^[①②③④⑤⑥⑦⑧⑨⑩]/.test(l));
+        if (parsed.length) setHeadlines(parsed);
+        else if (records[0].title) setHeadlines([records[0].title]);
+      }
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
+  }, []);
+
+  const display = headlines.length ? headlines : (loaded ? TICKER_FALLBACK : []);
+  if (!display.length) return null;
+
+  const items = [...display, ...display];
+
+  return (
+    <button className="news-ticker" onClick={() => onOpen("push")}>
+      <span className="ticker-label">AI日报</span>
+      <div className="ticker-viewport">
+        <div className="ticker-track" style={{ animationDuration: `${Math.max(12, display.length * 5)}s` }}>
+          {items.map((h, i) => (
+            <span key={i} className="ticker-item">{h}</span>
+          ))}
+        </div>
+      </div>
+    </button>
   );
 }
 
@@ -528,35 +699,55 @@ function AIView({
   onCancelSleep: () => void;
   onAddWater: () => void;
 }) {
+  const [weather, setWeather] = useState<{ temp: number; desc: string } | null>(null);
+
+  useEffect(() => {
+    // 深圳市宝安区
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=22.5552&longitude=113.8835&current=temperature_2m,weather_code&timezone=Asia%2FShanghai")
+      .then(r => r.json())
+      .then(data => {
+        const code: number = data.current.weather_code;
+        const temp = Math.round(data.current.temperature_2m);
+        const desc =
+          code === 0 ? "晴" :
+          code <= 3  ? "多云" :
+          code <= 48 ? "有雾" :
+          code <= 55 ? "小雨" :
+          code <= 65 ? "雨" :
+          code <= 75 ? "雪" :
+          code <= 82 ? "阵雨" : "雷雨";
+        setWeather({ temp, desc });
+      }).catch(() => {});
+  }, []);
+
+  const h = new Date().getHours();
+  const timeHint =
+    h < 6  ? "深夜了" :
+    h < 9  ? "清早了" :
+    h < 11 ? "上午好" :
+    h < 13 ? "到饭点了" :
+    h < 15 ? "下午了" :
+    h < 17 ? "快下班了" :
+    h < 19 ? "傍晚了" :
+    h < 21 ? "晚上好" :
+    h < 23 ? "入夜了" : "深夜了";
+
+  const d = new Date();
+  const days = ["周日","周一","周二","周三","周四","周五","周六"];
+  const dateStr = `${d.getMonth()+1}月${d.getDate()}日 ${days[d.getDay()]}`;
+
+  const heroPeriod =
+    h < 6  ? "night" :
+    h < 11 ? "morning" :
+    h < 18 ? "day" :
+    h < 22 ? "evening" : "night";
 
   return (
     <section className="screen-stack home-surface">
-      <div className="hero-card">
-        <div>
-          <h2>{result ? result.title : (() => { const h = new Date().getHours(); return h < 12 ? "早上好" : h < 18 ? "下午好" : "晚上好"; })()}</h2>
-          <span className="hero-build-ver">v{__APP_VERSION__}</span>
-        </div>
-        {!result && (
-          <div className="mascot-scene" aria-hidden="true">
-            <div className="float-orbit orbit-one" />
-            <div className="float-orbit orbit-two" />
-            <div className="spark-dot one" />
-            <div className="spark-dot two" />
-            <div className="mini-note-shape" />
-            <div className="mascot-sticker">
-              <img
-                className="mascot-image"
-                src="/shinchan-avatar.png"
-                alt=""
-                onError={(event) => {
-                  event.currentTarget.hidden = true;
-                  event.currentTarget.parentElement?.classList.add("is-empty");
-                }}
-              />
-              <Sparkles className="sticker-fallback" size={28} />
-            </div>
-          </div>
-        )}
+      <div className={`hero-card hero-card--${heroPeriod}`}>
+        <span className="hero-time-hint">
+          {timeHint}{weather ? ` · ${weather.temp}° ${weather.desc}` : ""}
+        </span>
       </div>
 
       {result && (
@@ -572,68 +763,11 @@ function AIView({
         </article>
       )}
 
+      <NewsTicker onOpen={onOpen} />
+
       <PomodoroCard onNotify={onNotify} />
 
-      <div className="home-health">
-        <div className="home-health-hd">
-          <Heart size={14} />
-          <span>健康</span>
-          <button className="home-health-all" onClick={() => onOpen("health")}>
-            查看全部 ›
-          </button>
-        </div>
-
-        <div className="health-grid">
-          {/* 睡眠 */}
-          <div className={cx("hg-card", !!sleepTracking && !todaySleep && "tracking")}>
-            <span className="hg-icon sleep"><Moon size={16} /></span>
-            <div className="hg-val">
-              {todaySleep ? (
-                <strong>{todaySleep.sleepHours}h</strong>
-              ) : sleepTracking ? (
-                <><span className="hg-pulse" /><span style={{ fontSize: 12, color: "var(--green)" }}>追踪中</span></>
-              ) : (
-                <span className="hg-empty">—</span>
-              )}
-            </div>
-            <span className="hg-label">睡眠</span>
-            <button
-              className="hg-btn"
-              onClick={todaySleep ? () => onLogHealth("sleep") : sleepTracking ? onFinishSleep : onStartSleep}
-            >
-              {todaySleep ? "修改" : sleepTracking ? "起床" : "入睡"}
-            </button>
-          </div>
-
-          {/* 肠胃 */}
-          <div className={cx("hg-card", todayDiarrhea > 0 && "warn")}>
-            <span className="hg-icon digestion"><Droplets size={16} /></span>
-            <div className="hg-val">
-              {todayDiarrhea > 0 ? (
-                <strong className="warn">{todayDiarrhea}次</strong>
-              ) : (
-                <strong>正常</strong>
-              )}
-            </div>
-            <span className="hg-label">肠胃</span>
-            <button className="hg-btn" onClick={() => onLogHealth("digestion")}>记录</button>
-          </div>
-
-          {/* 喝水 */}
-          <div className={cx("hg-card", todayWater >= WATER_GOAL && "done")}>
-            <span className="hg-icon water"><Droplet size={16} /></span>
-            <div className="hg-val">
-              {todayWater > 0 ? (
-                <strong>{todayWater}杯</strong>
-              ) : (
-                <span className="hg-empty">—</span>
-              )}
-            </div>
-            <span className="hg-label">喝水</span>
-            <button className="hg-btn" onClick={onAddWater}>+1杯</button>
-          </div>
-        </div>
-      </div>
+      <ScratchCard />
 
       <section className="home-entries">
         <button className="entry-card" onClick={() => onOpen("memory")}>
