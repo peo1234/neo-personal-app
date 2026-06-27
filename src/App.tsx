@@ -42,8 +42,92 @@ import {
 import type { Attachment, Goal, HealthEntry, Note, Task } from "./types";
 
 type CaptureMode = "save" | "organize";
-type AppView = "ai" | "memory" | "push" | "health";
+type AppView = "ai" | "memory" | "push" | "health" | "wellness";
 type NoteFilter = Note["kind"] | "all";
+
+type WellnessCat = "joy" | "mind" | "rest" | "brain";
+const WELLNESS: Record<WellnessCat, { emoji: string; label: string; color: string; items: string[] }> = {
+  joy: {
+    emoji: "😊", label: "快乐", color: "#f59e0b",
+    items: [
+      "海豚睡觉时只用半个大脑，另一半保持清醒，随时游泳 🐬",
+      "蜜蜂一生只能酿约 1/12 茶匙蜂蜜，每一滴都是它的全力以赴 🍯",
+      "猫发出呼噜声的频率（25-50Hz）能帮助骨骼愈合 🐱",
+      "河豚睡觉时会给自己做一个黏液泡泡当被子 🐡",
+      "章鱼有三个心脏，但跑步时其中两个会暂停——所以它跑完就累了 🐙",
+      "海獭睡觉时会互相牵手，防止漂散 🦦",
+      "企鹅求偶时会精心挑一颗石头送给喜欢的对象 🐧",
+      "松鼠常常忘记自己藏坚果的位置，反而无意中种了很多树 🌳",
+      "蜗牛可以睡三年，不用担心赶不上明天 🐌",
+      "北极熊的毛其实是透明的，只是看起来白色 🐻‍❄️",
+      "一只蚂蚁能举起自己体重 50 倍的东西，换算你能举起一辆车 🐜",
+      "鸭嘴兽是少数用电场感知猎物的哺乳动物，像自带 WiFi 📡",
+      "贻贝能分泌出目前已知最强的天然胶水，水下也能粘 🦪",
+      "笑一次调动的肌肉比皱眉少，所以快乐更省力 😄",
+      "阳光到达地球要 8 分钟，你现在看到的是 8 分钟前的太阳 ☀️",
+    ],
+  },
+  mind: {
+    emoji: "🌿", label: "心态", color: "#10b981",
+    items: [
+      "感觉很慢的时候，往往是在积累",
+      "你不需要对所有事情都有答案，不确定本身就是生命的一部分",
+      "疲惫不是弱点，是你一直在努力的证明",
+      "完成比完美更重要，先动起来再说",
+      "情绪不需要被解决，只需要被允许存在",
+      "你今天做到的事情，昨天的你还不会",
+      "不是所有的停顿都是浪费，有些是蓄力",
+      "别人的节奏不是你的标准答案",
+      "有时候什么都不做，也是一种选择",
+      "一件事做不好，不代表你这个人不好",
+      "比起想太多，先做一小步就够了",
+      "今天的混乱，也许是明天清晰的前奏",
+      "允许自己偶尔躺平，不必每天都很燃",
+      "你已经比你以为的更努力了",
+      "放慢不是放弃，是另一种方式前进",
+    ],
+  },
+  rest: {
+    emoji: "☁️", label: "休息", color: "#6366f1",
+    items: [
+      "看向窗外最远的地方，保持 20 秒，让眼睛休息一下 👀",
+      "深呼吸 3 次：吸气 4 秒 → 屏气 2 秒 → 呼气 6 秒 🌬️",
+      "放下手机，伸个大大的懒腰，听听骨头咔咔响 🦴",
+      "喝一杯水，不要太快，慢慢喝 💧",
+      "把肩膀往后转 5 圈，再往前转 5 圈 🔄",
+      "闭上眼睛 1 分钟，什么都不想，就感受黑暗 🌑",
+      "站起来走走，哪怕只是去倒杯水 🚶",
+      "把手放到脸上捂热，然后敷在眼睛上 🤲",
+      "放一首喜欢的歌，什么都不干，就听完这一首 🎵",
+      "活动一下手指，张开握拳，重复 10 次 ✋",
+      "调暗一点屏幕亮度，让眼睛舒服些 📱",
+      "找个舒服的姿势坐或躺，给自己 5 分钟什么都不做 🛋️",
+      "把脖子慢慢转向左边，停 5 秒，再转右边 🔃",
+      "如果今天很累，那就允许自己早点睡 🌙",
+      "摸摸脸，感受一下温度，回到当下 🫧",
+    ],
+  },
+  brain: {
+    emoji: "💡", label: "脑洞", color: "#ec4899",
+    items: [
+      "如果颜色有味道，红色是辣的还是甜的？",
+      "如果你能把一种技能直接下载进大脑，你会选什么？",
+      "如果建筑会说话，你家附近最老的那栋会聊什么？",
+      "如果时间可以暂停，你第一件事做什么？",
+      "如果动物能发朋友圈，最爱发的是哪种动物？",
+      "如果你能给 10 年前的自己发一条消息，你写什么？",
+      "如果把所有人类的记忆加在一起，会是什么感觉？",
+      "如果睡眠是可以储存的，你会提前存多少？",
+      "如果地球上只剩一种颜色，你希望是哪个？",
+      "如果你能成为某本书里的配角，你选哪本？",
+      "如果云是固体的，你觉得它们是什么手感？",
+      "如果情绪可以装瓶出售，哪种最贵？",
+      "如果有一天你的影子开始不听话，第一件事是什么？",
+      "如果音乐有形状，你最喜欢的歌是什么形状？",
+      "如果你能选择出生在哪个历史时代，你选什么时候？",
+    ],
+  },
+};
 
 interface OrganizeResult {
   title: string;
@@ -101,7 +185,7 @@ const navItems: Array<{ id: AppView; label: string; icon: LucideIcon }> = [
   { id: "ai", label: "主页", icon: Sparkles },
   { id: "push", label: "AI日报", icon: BellRing },
   { id: "memory", label: "随手记", icon: Database },
-  { id: "health", label: "健康", icon: Heart }
+  { id: "wellness", label: "治愈", icon: Smile }
 ];
 
 const MOODS = [
@@ -418,6 +502,7 @@ export default function App() {
         {activeView === "memory" && <MemoryView notes={notes} onDelete={deleteNotes} onUpdate={updateNote} />}
         {activeView === "push" && <PushView onNotify={notify} />}
         {activeView === "health" && <HealthView logs={healthLogs} onLogHealth={setLogModal} onAddWater={addWaterCup} onSaveMood={saveMood} />}
+        {activeView === "wellness" && <WellnessView />}
       </main>
 
       <section className="app-dock">
@@ -969,6 +1054,61 @@ function MemoryView({ notes, onDelete, onUpdate }: {
           onClose={() => setEditingNote(null)}
         />
       )}
+    </section>
+  );
+}
+
+function WellnessView() {
+  const [cat, setCat] = useState<WellnessCat>("joy");
+  const [idx, setIdx] = useState(() => Math.floor(Math.random() * WELLNESS.joy.items.length));
+  const [animating, setAnimating] = useState(false);
+
+  const cats = Object.entries(WELLNESS) as [WellnessCat, typeof WELLNESS.joy][];
+  const current = WELLNESS[cat];
+
+  function shuffle() {
+    setAnimating(true);
+    setTimeout(() => {
+      setIdx(Math.floor(Math.random() * current.items.length));
+      setAnimating(false);
+    }, 280);
+  }
+
+  function switchCat(c: WellnessCat) {
+    setCat(c);
+    setIdx(Math.floor(Math.random() * WELLNESS[c].items.length));
+  }
+
+  return (
+    <section className="screen-stack wellness-view">
+      <div className="content-head">
+        <h2>治愈时间</h2>
+        <p>随时来充个电</p>
+      </div>
+
+      <div className="wellness-cats">
+        {cats.map(([id, cfg]) => (
+          <button
+            key={id}
+            className={`wellness-cat-btn${cat === id ? " active" : ""}`}
+            style={{ "--cat-color": cfg.color } as React.CSSProperties}
+            onClick={() => switchCat(id)}
+          >
+            <span>{cfg.emoji}</span>
+            <span>{cfg.label}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className={`wellness-card${animating ? " wellness-card--out" : ""}`}
+           style={{ "--cat-color": current.color } as React.CSSProperties}>
+        <div className="wellness-card-emoji">{current.emoji}</div>
+        <p className="wellness-card-text">{current.items[idx]}</p>
+      </div>
+
+      <button className="wellness-shuffle" onClick={shuffle}>
+        换一个 ↻
+      </button>
     </section>
   );
 }
