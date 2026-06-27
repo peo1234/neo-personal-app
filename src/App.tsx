@@ -636,12 +636,27 @@ function NewsTicker({ onOpen }: { onOpen: (view: AppView) => void }) {
   useEffect(() => {
     fetchPushRecords().then(records => {
       if (records.length) {
-        const content = records[0].content ?? records[0].excerpt ?? "";
-        const parsed = content.split("\n")
-          .map(l => l.trim())
-          .filter(l => /^[①②③④⑤⑥⑦⑧⑨⑩]/.test(l));
+        const r = records[0];
+        const content = r.content ?? r.excerpt ?? "";
+        const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
+
+        // 优先：①②③ 开头
+        let parsed = lines.filter(l => /^[①②③④⑤⑥⑦⑧⑨⑩]/.test(l));
+
+        // 次选：1. 2. 3. 或 **1.** 等 markdown 序号
+        if (!parsed.length)
+          parsed = lines.filter(l => /^(\*{0,2})\d+[.、）)]\s*\*{0,2}/.test(l))
+            .map(l => l.replace(/^\*{0,2}\d+[.、）)]\s*\*{0,2}/, "").trim());
+
+        // 兜底：取所有超过 10 字的行（去掉 markdown 符号）
+        if (!parsed.length)
+          parsed = lines
+            .map(l => l.replace(/^#+\s*/, "").replace(/\*{1,2}([^*]+)\*{1,2}/g, "$1").trim())
+            .filter(l => l.length > 10)
+            .slice(0, 8);
+
         if (parsed.length) setHeadlines(parsed);
-        else if (records[0].title) setHeadlines([records[0].title]);
+        else if (r.title) setHeadlines([r.title]);
       }
       setLoaded(true);
     }).catch(() => setLoaded(true));
