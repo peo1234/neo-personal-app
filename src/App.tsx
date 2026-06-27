@@ -629,53 +629,61 @@ const TICKER_FALLBACK = [
   "⑤ 国内大模型混战加剧，百模大战进入下半场",
 ];
 
+function parseHeadlines(records: { content?: string; excerpt?: string; title?: string }[]): string[] {
+  if (!records.length) return [];
+  const r = records[0];
+  const content = r.content ?? r.excerpt ?? "";
+  const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
+  let parsed = lines.filter(l => /^[①②③④⑤⑥⑦⑧⑨⑩]/.test(l));
+  if (!parsed.length)
+    parsed = lines.filter(l => /^(\*{0,2})\d+[.、）)]\s*\*{0,2}/.test(l))
+      .map(l => l.replace(/^\*{0,2}\d+[.、）)]\s*\*{0,2}/, "").trim());
+  if (!parsed.length)
+    parsed = lines
+      .map(l => l.replace(/^#+\s*/, "").replace(/\*{1,2}([^*]+)\*{1,2}/g, "$1").trim())
+      .filter(l => l.length > 10).slice(0, 8);
+  if (parsed.length) return parsed;
+  if (r.title) return [r.title];
+  return [];
+}
+
 function NewsTicker({ onOpen }: { onOpen: (view: AppView) => void }) {
   const [headlines, setHeadlines] = useState<string[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [idx, setIdx] = useState(0);
+  const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     fetchPushRecords().then(records => {
-      if (records.length) {
-        const r = records[0];
-        const content = r.content ?? r.excerpt ?? "";
-        const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
-
-        // 优先：①②③ 开头
-        let parsed = lines.filter(l => /^[①②③④⑤⑥⑦⑧⑨⑩]/.test(l));
-
-        // 次选：1. 2. 3. 或 **1.** 等 markdown 序号
-        if (!parsed.length)
-          parsed = lines.filter(l => /^(\*{0,2})\d+[.、）)]\s*\*{0,2}/.test(l))
-            .map(l => l.replace(/^\*{0,2}\d+[.、）)]\s*\*{0,2}/, "").trim());
-
-        // 兜底：取所有超过 10 字的行（去掉 markdown 符号）
-        if (!parsed.length)
-          parsed = lines
-            .map(l => l.replace(/^#+\s*/, "").replace(/\*{1,2}([^*]+)\*{1,2}/g, "$1").trim())
-            .filter(l => l.length > 10)
-            .slice(0, 8);
-
-        if (parsed.length) setHeadlines(parsed);
-        else if (r.title) setHeadlines([r.title]);
-      }
+      const h = parseHeadlines(records);
+      if (h.length) setHeadlines(h);
       setLoaded(true);
     }).catch(() => setLoaded(true));
   }, []);
 
   const display = headlines.length ? headlines : (loaded ? TICKER_FALLBACK : []);
-  if (!display.length) return null;
 
-  const items = [...display, ...display];
+  useEffect(() => {
+    if (display.length <= 1) return;
+    const t = setInterval(() => {
+      setVisible(false);
+      setTimeout(() => {
+        setIdx(i => (i + 1) % display.length);
+        setVisible(true);
+      }, 350);
+    }, 4000);
+    return () => clearInterval(t);
+  }, [display.length]);
+
+  if (!display.length) return null;
 
   return (
     <button className="news-ticker" onClick={() => onOpen("push")}>
       <span className="ticker-label">AI日报</span>
       <div className="ticker-viewport">
-        <div className="ticker-track" style={{ animationDuration: `${Math.max(12, display.length * 5)}s` }}>
-          {items.map((h, i) => (
-            <span key={i} className="ticker-item">{h}</span>
-          ))}
-        </div>
+        <span className={`ticker-item${visible ? "" : " ticker-item--out"}`}>
+          {display[idx]}
+        </span>
       </div>
     </button>
   );
