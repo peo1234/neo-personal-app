@@ -209,6 +209,7 @@ function stripMarkdown(text: string) {
     .replace(/#{1,6}\s+/g, "")
     .replace(/^[-*]\s+/gm, "")
     .replace(/`[^`]+`/g, "")
+    .replace(/\*+/g, "")
     .replace(/\n{2,}/g, " ")
     .replace(/\n/g, " ")
     .trim();
