@@ -663,9 +663,8 @@ function ChargeCard() {
           ))}
         </div>
       )}
-      <span className="charge-hint-top">给我一点电</span>
       <p className="charge-msg" key={fadeKey}>{msg}</p>
-      <span className="charge-hint-bottom">点击换一句</span>
+      <span className="charge-tap-hint">⚡ 点我换一句</span>
     </button>
   );
 }
@@ -691,8 +690,8 @@ function parseHeadlines(records: { content?: string; excerpt?: string; title?: s
     parsed = lines
       .map(l => l.replace(/^#+\s*/, "").replace(/\*{1,2}([^*]+)\*{1,2}/g, "$1").trim())
       .filter(l => l.length > 10).slice(0, 8);
-  if (parsed.length) return parsed;
-  if (r.title) return [r.title];
+  if (parsed.length) return parsed.map(l => stripMarkdown(l));
+  if (r.title) return [stripMarkdown(r.title)];
   return [];
 }
 
