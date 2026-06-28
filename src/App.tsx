@@ -672,7 +672,17 @@ function ChargeCard() {
   return (
     <button className={`charge-card${glitch ? " charge-glitch" : ""}`} onClick={next}>
       <div className="charge-scanlines" aria-hidden="true" />
-      <span className="charge-label">// 今日来信</span>
+
+      <div className="charge-robot" aria-hidden="true">
+        <div className="charge-antenna"><div className="charge-antenna-ball" /></div>
+        <div className="charge-head">
+          <div className={`charge-eye${typing ? " charge-eye--blink" : ""}`} />
+          <div className={`charge-eye${typing ? " charge-eye--blink" : ""}`} />
+        </div>
+        <div className={`charge-mouth${typing ? " charge-mouth--talk" : ""}`} />
+        <span className="charge-label">// 今日来信</span>
+      </div>
+
       <p className="charge-msg">
         {displayed}
         {typing && <span className="charge-cursor" />}
