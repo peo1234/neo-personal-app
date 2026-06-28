@@ -613,82 +613,180 @@ function PomodoroCard({ onNotify }: { onNotify: (msg: string) => void }) {
   );
 }
 
-const CHARGE_MSGS = [
-  { msg: "你今天没崩，已经很了不起了", star: "✦" },
-  { msg: "不是你太弱，是这件事本来就难", star: "✧" },
-  { msg: "打工人打工魂，打完收工回家睡", star: "⋆" },
-  { msg: "别人的成功不是你的 deadline", star: "✦" },
-  { msg: "你值得一个不用解释的下午", star: "✧" },
-  { msg: "今天也是被资本压榨的一天，辛苦了", star: "⋆" },
-  { msg: "没人要求你每天都发光，省点电", star: "✦" },
-  { msg: "你不是废物，你只是在充电", star: "✧" },
-  { msg: "熊猫每天吃 12 小时还被叫国宝，你也可以", star: "⋆" },
-  { msg: "你现在的样子，就是答案", star: "✦" },
-  { msg: "拒绝 PUA，你很好", star: "✧" },
-  { msg: "有时候躺平就是最强的反抗", star: "⋆" },
-  { msg: "别人眼里的你，比你眼里的自己好看多了", star: "✦" },
-  { msg: "你允许自己累了吗？现在允许", star: "✧" },
-  { msg: "今天的混乱不代表你这个人混乱", star: "⋆" },
-  { msg: "不是所有努力都被看见，但宇宙记账", star: "✦" },
-  { msg: "你身边的人，因为有你在会好一点", star: "✧" },
-  { msg: "维持现状有时候就已经是赢了", star: "⋆" },
-  { msg: "你比你想象中更能承受，也更值得被爱", star: "✦" },
-  { msg: "有人希望你好好的，包括我", star: "✧" },
-  { msg: "你现在感受到的是真实的，不用压下去", star: "⋆" },
-  { msg: "没有对手，你是自己这条赛道的第一", star: "✦" },
-  { msg: "你已经比很多人更诚实地在生活了", star: "✧" },
-  { msg: "人间值得，你也值得", star: "⋆" },
-  { msg: "老板的焦虑不是你的焦虑，下班了", star: "✦" },
+type FortuneLevel = "上上签" | "上签" | "中签" | "下签" | "下下签";
+type Fortune = { id: number; level: FortuneLevel; title: string; poem: string; body: string };
+
+const FORTUNE_COLOR: Record<FortuneLevel, string> = {
+  "上上签": "#c8860a",
+  "上签":   "#1a8c5c",
+  "中签":   "#5258c0",
+  "下签":   "#c05818",
+  "下下签": "#b02020",
+};
+
+const FORTUNES: Fortune[] = [
+  { id: 1,  level: "上上签", title: "柳暗花明", poem: "山穷水复疑无路，\n柳暗花明又一村。", body: "前路虽阻，转机将至，勿忧勿虑。" },
+  { id: 2,  level: "上上签", title: "花开自在", poem: "不争春色艳三分，\n自有秋来万里香。", body: "顺应本心，时机已熟，静待自成。" },
+  { id: 3,  level: "上上签", title: "龙吟虎啸", poem: "蛟龙得水终腾起，\n自有风云际会时。", body: "蛰伏已久，显露之时将至，勿失时机。" },
+  { id: 4,  level: "上上签", title: "顺水行舟", poem: "顺流而下万里舟，\n东风自有送归途。", body: "顺势而为，所谋皆宜，放手一试。" },
+  { id: 5,  level: "上上签", title: "鱼跃龙门", poem: "一跃龙门身已变，\n从此云路任翱翔。", body: "机缘已至，勇于一跃，莫令错失。" },
+  { id: 6,  level: "上签",   title: "春风得意", poem: "春风得意马蹄疾，\n一日看尽长安花。", body: "风向顺遂，迈步即是，无须迟疑。" },
+  { id: 7,  level: "上签",   title: "马到成功", poem: "千里马蹄风路远，\n功名自有到来时。", body: "起而行之胜于空想，今日动手。" },
+  { id: 8,  level: "上签",   title: "旭日东升", poem: "旭日东升驱夜色，\n新程万里正当时。", body: "昨事已过，今日重计，焕然一新。" },
+  { id: 9,  level: "上签",   title: "步步高升", poem: "步履虽迟志弥坚，\n高山仰止在云端。", body: "虽不显于人，积累之势已成。" },
+  { id: 10, level: "上签",   title: "金玉满堂", poem: "积善余庆家道兴，\n金玉满堂德所彰。", body: "所有之物，多于所见，知足者富。" },
+  { id: 11, level: "上签",   title: "天降甘霖", poem: "久旱忽闻甘雨至，\n枯木逢春又发芽。", body: "久候之事，消息将至，静待佳音。" },
+  { id: 12, level: "上签",   title: "一帆风顺", poem: "一帆顺风千里去，\n万里前程任往来。", body: "无大波折，踏实行事即可。" },
+  { id: 13, level: "中签",   title: "云淡风轻", poem: "云淡风轻近午天，\n傍花随柳过前川。", body: "今日平平，然平安即是福泽。" },
+  { id: 14, level: "中签",   title: "守株待兔", poem: "静守芳华候时节，\n时至自有桃李春。", body: "时机未至，暂作等待，切勿妄动。" },
+  { id: 15, level: "中签",   title: "随遇而安", poem: "随缘消旧业，\n安分度余生。", body: "不必强求定数，随顺而行，自有归处。" },
+  { id: 16, level: "中签",   title: "默默耕耘", poem: "但问耕耘莫问收，\n时至自有花开候。", body: "无人见证亦无妨，因果自有印证之日。" },
+  { id: 17, level: "中签",   title: "细水长流", poem: "涓涓细流终成海，\n点点滴滴积成山。", body: "不适合急进，绵长之力胜于一时之猛。" },
+  { id: 18, level: "中签",   title: "静观其变", poem: "静观天色风云变，\n时至自有峰回路。", body: "勿急于表态，再观望片刻，局势未定。" },
+  { id: 19, level: "中签",   title: "因势利导", poem: "水善利万物而不争，\n顺势而行自然通。", body: "依现有之势而行，不可逆势强求。" },
+  { id: 20, level: "中签",   title: "积少成多", poem: "积土成山风雨兴，\n积水成渊蛟龙生。", body: "今日微末之举，他日自有大成之时。" },
+  { id: 21, level: "中签",   title: "暗流涌动", poem: "水面无波潜有鱼，\n须知静处有玄机。", body: "表面平静之中，有事正在悄然变化。" },
+  { id: 22, level: "中签",   title: "半途而废", poem: "行百里者半九十，\n回首来时路尚清。", body: "非令你放弃，而是提醒回看，路是否走偏。" },
+  { id: 23, level: "下签",   title: "逆风而行", poem: "逆风岂可强行舟，\n且守本心待转机。", body: "今日诸事不顺，少做决定，守而待时。" },
+  { id: 24, level: "下签",   title: "一波三折", poem: "路虽迂回终向前，\n波折之中有真章。", body: "事有曲折，切勿冒进，多思一步。" },
+  { id: 25, level: "下签",   title: "乌云蔽日", poem: "乌云遮日非久长，\n守住初心待晴天。", body: "所见之方向或有盲区，换角度再看。" },
+  { id: 26, level: "下签",   title: "力不从心", poem: "欲速则不达，\n缓行方得安。", body: "思虑过多已成负累，今日且先放下。" },
+  { id: 27, level: "下签",   title: "迷途知返", poem: "迷途知返犹未晚，\n回头是岸自有期。", body: "偏离正途并不可怕，知晓即可折返。" },
+  { id: 28, level: "下下签", title: "大事不妙", poem: "风浪未息莫行舟，\n静守其时待天光。", body: "今日宜静不宜动，凡决断皆宜缓行。" },
+  { id: 29, level: "下下签", title: "四面楚歌", poem: "四面楚歌势已孤，\n独善其身守本真。", body: "所倚之人今日或有变，需靠一己之力。" },
+  { id: 30, level: "下下签", title: "焦头烂额", poem: "事急则乱缓则安，\n且放宽心再图谋。", body: "诸事搁置，饮水歇息，明日再议。" },
 ];
 
-function ChargeCard() {
-  const [idx, setIdx] = useState(() => Math.floor(Math.random() * CHARGE_MSGS.length));
-  const [displayed, setDisplayed] = useState("");
-  const [typing, setTyping] = useState(true);
-  const [glitch, setGlitch] = useState(false);
+const JAR_STICKS = [
+  { x1: 20, y1: 16, x2: 30, y2: 65 },
+  { x1: 28, y1:  8, x2: 37, y2: 62 },
+  { x1: 37, y1:  2, x2: 43, y2: 60 },
+  { x1: 46, y1:  9, x2: 48, y2: 60 },
+  { x1: 55, y1:  4, x2: 53, y2: 60 },
+  { x1: 65, y1:  9, x2: 59, y2: 62 },
+  { x1: 74, y1: 17, x2: 67, y2: 65 },
+];
+const JAR_HL = 2;
 
-  const full = CHARGE_MSGS[idx].msg;
+function FortuneCard() {
+  const [fortune, setFortune] = useState<Fortune | null>(null);
+  const [shaking, setShaking] = useState(false);
 
-  useEffect(() => {
-    setDisplayed("");
-    setTyping(true);
-    let i = 0;
-    const t = setInterval(() => {
-      i++;
-      setDisplayed(full.slice(0, i));
-      if (i >= full.length) { clearInterval(t); setTyping(false); }
-    }, 42);
-    return () => clearInterval(t);
-  }, [full]);
-
-  function next() {
-    setGlitch(true);
+  function draw() {
+    if (shaking) return;
+    setShaking(true);
+    setFortune(null);
     setTimeout(() => {
-      setGlitch(false);
-      setIdx(i => (i + 1) % CHARGE_MSGS.length);
-    }, 220);
+      setShaking(false);
+      setFortune(FORTUNES[Math.floor(Math.random() * FORTUNES.length)]);
+    }, 520);
   }
 
-  return (
-    <button className={`charge-card${glitch ? " charge-glitch" : ""}`} onClick={next}>
-      <div className="charge-scanlines" aria-hidden="true" />
+  const levelColor = fortune ? FORTUNE_COLOR[fortune.level] : null;
 
-      <div className="charge-robot" aria-hidden="true">
-        <div className="charge-antenna"><div className="charge-antenna-ball" /></div>
-        <div className="charge-head">
-          <div className={`charge-eye${typing ? " charge-eye--blink" : ""}`} />
-          <div className={`charge-eye${typing ? " charge-eye--blink" : ""}`} />
-        </div>
-        <div className={`charge-mouth${typing ? " charge-mouth--talk" : ""}`} />
-        <span className="charge-label">// 今日来信</span>
+  return (
+    <div
+      className={`fortune-card${shaking ? " fortune-shaking" : ""}`}
+      onClick={draw}
+      role="button"
+      tabIndex={0}
+    >
+      {/* SVG 签筒：仅未抽时显示 */}
+      <div className={`fortune-scene${fortune ? " fortune-scene--hidden" : ""}`}>
+        <svg viewBox="0 0 96 140" width="96" height="140" aria-hidden="true" style={{ display: "block" }}>
+          <defs>
+            <linearGradient id="fj-body" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%"   stopColor="#5c0c0c" />
+              <stop offset="22%"  stopColor="#9e1c1c" />
+              <stop offset="50%"  stopColor="#c52424" />
+              <stop offset="78%"  stopColor="#9e1c1c" />
+              <stop offset="100%" stopColor="#5c0c0c" />
+            </linearGradient>
+            <linearGradient id="fj-rim" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%"   stopColor="#3a0808" />
+              <stop offset="50%"  stopColor="#741616" />
+              <stop offset="100%" stopColor="#3a0808" />
+            </linearGradient>
+            <linearGradient id="fj-gold" x1="0" x2="1" y1="0" y2="0">
+              <stop offset="0%"   stopColor="#5a3a06" />
+              <stop offset="28%"  stopColor="#b88010" />
+              <stop offset="50%"  stopColor="#e8b828" />
+              <stop offset="72%"  stopColor="#b88010" />
+              <stop offset="100%" stopColor="#5a3a06" />
+            </linearGradient>
+            <filter id="fj-glow" x="-60%" y="-60%" width="220%" height="220%">
+              <feGaussianBlur stdDeviation="2.5" result="b" />
+              <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+            </filter>
+          </defs>
+
+          {/* regular sticks */}
+          {JAR_STICKS.map((s, i) => i !== JAR_HL && (
+            <line key={i} x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2}
+              stroke="#c9a040" strokeWidth="5" strokeLinecap="round" />
+          ))}
+
+          {/* highlighted stick */}
+          <line
+            className={`fj-hl${fortune ? " fj-hl--out" : ""}`}
+            x1={JAR_STICKS[JAR_HL].x1} y1={JAR_STICKS[JAR_HL].y1}
+            x2={JAR_STICKS[JAR_HL].x2} y2={JAR_STICKS[JAR_HL].y2}
+            stroke={fortune ? "#f4c428" : "#c9a040"}
+            strokeWidth="5" strokeLinecap="round"
+            filter={fortune ? "url(#fj-glow)" : undefined}
+          />
+
+          {/* container body */}
+          <rect x="8" y="62" width="80" height="66" rx="8" fill="url(#fj-body)" />
+
+          {/* top opening */}
+          <ellipse cx="48" cy="62" rx="40" ry="13" fill="url(#fj-rim)" />
+          <ellipse cx="48" cy="65" rx="30"  ry="8"  fill="rgba(0,0,0,0.38)" />
+
+          {/* gold band top */}
+          <rect x="8" y="75" width="80" height="5" rx="1" fill="url(#fj-gold)" />
+
+          {/* center decoration */}
+          <rect x="37" y="90" width="22" height="16" rx="2" fill="none"
+            stroke="rgba(232,184,40,0.22)" strokeWidth="1.5" />
+
+          {/* gold band bottom */}
+          <rect x="8" y="116" width="80" height="5" rx="1" fill="url(#fj-gold)" />
+
+          {/* bottom oval */}
+          <ellipse cx="48" cy="128" rx="40" ry="10" fill="rgba(36,4,4,0.88)" />
+
+          {/* sheen */}
+          <ellipse cx="30" cy="96" rx="6" ry="18" fill="rgba(255,255,255,0.04)" />
+        </svg>
       </div>
 
-      <p className="charge-msg">
-        {displayed}
-        {typing && <span className="charge-cursor" />}
-      </p>
-      <span className="charge-tap-hint">tap · next_</span>
-    </button>
+      {!fortune ? (
+        <p className="fortune-cta">轻触抽签</p>
+      ) : (
+        <div className="fortune-result">
+          <div className="fortune-header">
+            <span className="fortune-num">第 {fortune.id} 签</span>
+            <span className="fortune-level-badge"
+              style={{ color: levelColor!, background: `${levelColor}18` }}>
+              {fortune.level}
+            </span>
+          </div>
+          <p className="fortune-title">{fortune.title}</p>
+          <div className="fortune-sep">
+            <span className="fortune-sep-label">诗曰</span>
+            <div className="fortune-sep-line" />
+          </div>
+          <p className="fortune-poem">{fortune.poem}</p>
+          <div className="fortune-sep">
+            <span className="fortune-sep-label">解</span>
+            <div className="fortune-sep-line" />
+          </div>
+          <p className="fortune-body">{fortune.body}</p>
+          <span className="fortune-redraw">再抽 →</span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -862,7 +960,7 @@ function AIView({
 
       <PomodoroCard onNotify={onNotify} />
 
-      <ChargeCard />
+      <FortuneCard />
 
       <section className="home-entries">
         <button className="entry-card" onClick={() => onOpen("memory")}>
