@@ -643,29 +643,41 @@ const CHARGE_MSGS = [
 
 function ChargeCard() {
   const [idx, setIdx] = useState(() => Math.floor(Math.random() * CHARGE_MSGS.length));
-  const [bursting, setBursting] = useState(false);
-  const [fadeKey, setFadeKey] = useState(0);
+  const [displayed, setDisplayed] = useState("");
+  const [typing, setTyping] = useState(true);
+  const [glitch, setGlitch] = useState(false);
+
+  const full = CHARGE_MSGS[idx].msg;
+
+  useEffect(() => {
+    setDisplayed("");
+    setTyping(true);
+    let i = 0;
+    const t = setInterval(() => {
+      i++;
+      setDisplayed(full.slice(0, i));
+      if (i >= full.length) { clearInterval(t); setTyping(false); }
+    }, 42);
+    return () => clearInterval(t);
+  }, [full]);
 
   function next() {
-    setBursting(true);
-    setTimeout(() => setBursting(false), 800);
-    setIdx(i => (i + 1) % CHARGE_MSGS.length);
-    setFadeKey(k => k + 1);
+    setGlitch(true);
+    setTimeout(() => {
+      setGlitch(false);
+      setIdx(i => (i + 1) % CHARGE_MSGS.length);
+    }, 220);
   }
 
-  const { msg, star } = CHARGE_MSGS[idx];
-
   return (
-    <button className="charge-card" onClick={next}>
-      {bursting && (
-        <div className="charge-burst" aria-hidden="true">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <span key={i} className={`charge-spark spark-${i}`}>{star}</span>
-          ))}
-        </div>
-      )}
-      <p className="charge-msg" key={fadeKey}>{msg}</p>
-      <span className="charge-tap-hint">⚡ 点我换一句</span>
+    <button className={`charge-card${glitch ? " charge-glitch" : ""}`} onClick={next}>
+      <div className="charge-scanlines" aria-hidden="true" />
+      <span className="charge-label">// 今日来信</span>
+      <p className="charge-msg">
+        {displayed}
+        {typing && <span className="charge-cursor" />}
+      </p>
+      <span className="charge-tap-hint">tap · next_</span>
     </button>
   );
 }
