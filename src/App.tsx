@@ -612,97 +612,56 @@ function PomodoroCard({ onNotify }: { onNotify: (msg: string) => void }) {
   );
 }
 
-function ScratchCard() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [revealed, setRevealed] = useState(false);
-  const isDrawing = useRef(false);
+const CHARGE_MSGS = [
+  { msg: "你今天已经很好了", star: "✦" },
+  { msg: "有你在，就好一点点", star: "✧" },
+  { msg: "不必做对所有事，做了就够", star: "⋆" },
+  { msg: "慢慢来，都来得及", star: "✦" },
+  { msg: "今天也辛苦了", star: "✧" },
+  { msg: "你比你觉得的更被需要", star: "⋆" },
+  { msg: "深呼吸，然后继续", star: "✦" },
+  { msg: "你已经比昨天又走了一步", star: "✧" },
+  { msg: "没关系，一切都是暂时的", star: "⋆" },
+  { msg: "你值得被好好对待", star: "✦" },
+  { msg: "今天做到了，就够了", star: "✧" },
+  { msg: "你很好，只是今天很累", star: "⋆" },
+  { msg: "谢谢你还在努力", star: "✦" },
+  { msg: "不孤单的", star: "✧" },
+  { msg: "一点一点来，都会的", star: "⋆" },
+  { msg: "你值得一个好好的夜晚", star: "✦" },
+  { msg: "已经很不容易了，真的", star: "✧" },
+  { msg: "再小的一步也是在前进", star: "⋆" },
+  { msg: "喜欢你这样的人", star: "✦" },
+  { msg: "今天撑过去了，明天还有惊喜", star: "✧" },
+];
 
-  const today = todayStr();
-  const seed = today.split("-").reduce((acc, v) => acc + parseInt(v, 10), 0);
-  const card = DAILY_CARDS[seed % DAILY_CARDS.length];
+function ChargeCard() {
+  const [idx, setIdx] = useState(() => Math.floor(Math.random() * CHARGE_MSGS.length));
+  const [bursting, setBursting] = useState(false);
+  const [fadeKey, setFadeKey] = useState(0);
 
-  useEffect(() => {
-    if (localStorage.getItem("neo_scratch_date") === today) {
-      setRevealed(true);
-      return;
-    }
-    const id = requestAnimationFrame(() => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      const dpr = window.devicePixelRatio || 1;
-      const w = canvas.offsetWidth;
-      const h = canvas.offsetHeight;
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
-      ctx.scale(dpr, dpr);
-      const grad = ctx.createLinearGradient(0, 0, w, h);
-      grad.addColorStop(0, "#c8e4cc");
-      grad.addColorStop(1, "#b8d8be");
-      ctx.fillStyle = grad;
-      ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = "rgba(46, 125, 90, 0.5)";
-      ctx.font = `500 13px "Segoe UI", "PingFang SC", sans-serif`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("搓一搓 ✦", w / 2, h / 2);
-    });
-    return () => cancelAnimationFrame(id);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function getXY(e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) {
-    const rect = canvasRef.current!.getBoundingClientRect();
-    if ("touches" in e) {
-      return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
-    }
-    return { x: (e as React.MouseEvent).clientX - rect.left, y: (e as React.MouseEvent).clientY - rect.top };
+  function next() {
+    setBursting(true);
+    setTimeout(() => setBursting(false), 800);
+    setIdx(i => (i + 1) % CHARGE_MSGS.length);
+    setFadeKey(k => k + 1);
   }
 
-  function scratch(x: number, y: number) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    ctx.arc(x, y, 22, 0, Math.PI * 2);
-    ctx.fill();
-    const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-    let transparent = 0;
-    for (let i = 3; i < data.length; i += 16) {
-      if (data[i] < 64) transparent++;
-    }
-    if ((transparent * 4) / (canvas.width * canvas.height) > 0.45) {
-      setRevealed(true);
-      localStorage.setItem("neo_scratch_date", today);
-    }
-  }
+  const { msg, star } = CHARGE_MSGS[idx];
 
   return (
-    <div className="scratch-wrap">
-      <div className="scratch-content">
-        <span className="scratch-emoji">{card.emoji}</span>
-        <div>
-          <p className="scratch-title">{card.title}</p>
-          <p className="scratch-body">{card.body}</p>
+    <button className="charge-card" onClick={next}>
+      {bursting && (
+        <div className="charge-burst" aria-hidden="true">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <span key={i} className={`charge-spark spark-${i}`}>{star}</span>
+          ))}
         </div>
-      </div>
-      {!revealed && (
-        <canvas
-          ref={canvasRef}
-          className="scratch-canvas"
-          onMouseDown={(e) => { isDrawing.current = true; const { x, y } = getXY(e); scratch(x, y); }}
-          onMouseMove={(e) => { if (isDrawing.current) { const { x, y } = getXY(e); scratch(x, y); } }}
-          onMouseUp={() => { isDrawing.current = false; }}
-          onMouseLeave={() => { isDrawing.current = false; }}
-          onTouchStart={(e) => { isDrawing.current = true; const { x, y } = getXY(e); scratch(x, y); }}
-          onTouchMove={(e) => { e.preventDefault(); if (isDrawing.current) { const { x, y } = getXY(e); scratch(x, y); } }}
-          onTouchEnd={() => { isDrawing.current = false; }}
-        />
       )}
-    </div>
+      <span className="charge-hint-top">给我一点电</span>
+      <p className="charge-msg" key={fadeKey}>{msg}</p>
+      <span className="charge-hint-bottom">点击换一句</span>
+    </button>
   );
 }
 
@@ -875,7 +834,7 @@ function AIView({
 
       <PomodoroCard onNotify={onNotify} />
 
-      <ScratchCard />
+      <ChargeCard />
 
       <section className="home-entries">
         <button className="entry-card" onClick={() => onOpen("memory")}>

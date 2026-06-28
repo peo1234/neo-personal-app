@@ -2658,6 +2658,91 @@ button:disabled {
   background: rgba(255,255,255,1);
 }
 
+/* ─── Charge card ─── */
+
+.charge-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 20px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(200, 225, 210, 0.5);
+  box-shadow: 0 2px 16px rgba(30, 70, 45, 0.07);
+  overflow: hidden;
+  min-height: 110px;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+
+.charge-card:active {
+  transform: scale(0.98);
+}
+
+.charge-hint-top {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--green);
+  opacity: 0.7;
+  text-transform: none;
+}
+
+.charge-msg {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--ink);
+  text-align: center;
+  margin: 0;
+  line-height: 1.5;
+  animation: chargeFadeIn 0.4s ease both;
+}
+
+@keyframes chargeFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.charge-hint-bottom {
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.5;
+}
+
+/* burst particles */
+.charge-burst {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.charge-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  font-size: 14px;
+  color: var(--green);
+  animation: sparkFly 0.75s ease-out forwards;
+  opacity: 0;
+}
+
+.spark-0 { --sx: -52px; --sy: -40px; animation-delay: 0s; }
+.spark-1 { --sx:   0px; --sy: -60px; animation-delay: 0.04s; }
+.spark-2 { --sx:  52px; --sy: -40px; animation-delay: 0.08s; }
+.spark-3 { --sx:  62px; --sy:   0px; animation-delay: 0.02s; }
+.spark-4 { --sx:  52px; --sy:  40px; animation-delay: 0.06s; }
+.spark-5 { --sx:   0px; --sy:  55px; animation-delay: 0.03s; }
+.spark-6 { --sx: -52px; --sy:  40px; animation-delay: 0.07s; }
+.spark-7 { --sx: -62px; --sy:   0px; animation-delay: 0.05s; }
+
+@keyframes sparkFly {
+  0%   { opacity: 1; transform: translate(-50%, -50%) translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) translate(var(--sx), var(--sy)) scale(0.3); }
+}
+
 /* ─── Scratch card ─── */
 
 .scratch-wrap {
