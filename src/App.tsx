@@ -731,7 +731,8 @@ function NewsTicker({ onOpen }: { onOpen: (view: AppView) => void }) {
       <span className="ticker-label">AI日报</span>
       <div className="ticker-viewport">
         <span className={`ticker-item${visible ? "" : " ticker-item--out"}`}>
-          {display[idx]}
+          <span className="ticker-idx">{"①②③④⑤⑥⑦⑧⑨⑩"[idx % 10]}</span>
+          {display[idx].replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/, "")}
         </span>
       </div>
     </button>

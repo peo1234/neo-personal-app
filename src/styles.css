@@ -2560,6 +2560,12 @@ button:disabled {
   transform: translateY(0);
 }
 
+.ticker-idx {
+  color: var(--green);
+  font-weight: 600;
+  margin-right: 5px;
+}
+
 .ticker-item--out {
   opacity: 0;
   transform: translateY(-6px);
