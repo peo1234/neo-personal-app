@@ -798,20 +798,22 @@ const TICKER_FALLBACK = [
   "⑤ 国内大模型混战加剧，百模大战进入下半场",
 ];
 
+// Returns title text for card display (keeps ① number), or null if not a title line.
+// For ticker use, caller strips leading ①②③ and Arabic numbers itself.
 function extractNewsTitle(line: string): string | null {
-  // **① title** — bold + circled number (latest API format)
+  // **① Grok...** → "① Grok..."  (keep circled number for card readability)
   if (/^\*{1,2}[①②③④⑤⑥⑦⑧⑨⑩]/.test(line)) {
-    return line.replace(/^\*{1,2}/, "").replace(/\*{1,2}$/, "").replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/, "").trim();
+    return line.replace(/^\*{1,2}/, "").replace(/\*{1,2}$/, "").trim();
   }
-  // ① title — plain circled number
+  // ① Grok... → "① Grok..."
   if (/^[①②③④⑤⑥⑦⑧⑨⑩]\s/.test(line)) {
-    return line.replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/, "").trim();
+    return line.trim();
   }
-  // ### 1. title — h3 numbered heading
+  // ### 1. 🤖 Grok... → "🤖 Grok..."
   if (/^###\s+\d+[.、）)]\s/.test(line)) {
-    return line.replace(/^###\s+/, "").replace(/^\d+[.、）)]\s*/, "").trim();
+    return line.replace(/^###\s+\d+[.、）)]\s*/, "").trim();
   }
-  // **1. title** — bold numbered
+  // **1. 🏷️ title** → "title"
   if (/^\*{1,2}\d+[.、）)]\s/.test(line)) {
     return line.replace(/^\*{1,2}/, "").replace(/\*{1,2}$/, "").replace(/^\d+[.、）)]\s*/, "").replace(/^🏷️\s*/, "").trim();
   }
@@ -867,7 +869,7 @@ function NewsTicker({ onOpen }: { onOpen: (view: AppView) => void }) {
       <div className="ticker-viewport">
         <span className={`ticker-item${visible ? "" : " ticker-item--out"}`}>
           <span className="ticker-idx">{"①②③④⑤⑥⑦⑧⑨⑩"[idx % 10]}</span>
-          {display[idx].replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/, "")}
+          {display[idx].replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/, "").replace(/^\d+[.、）)]\s*/, "")}
         </span>
       </div>
     </button>
