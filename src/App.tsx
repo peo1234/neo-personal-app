@@ -1312,11 +1312,14 @@ function ReportMarkdown({ text }: { text: string }) {
     const line = raw.trim();
     if (!line) return null;
     if (line === "---") return <hr key={index} />;
-    if (line.startsWith("### ")) return <h4 key={index}>{renderInline(line.slice(4))}</h4>;
     if (line.startsWith("## ")) return <h3 key={index}>{renderInline(line.slice(3))}</h3>;
-    if (line.startsWith("- ")) return <p key={index} className="report-bullet">{renderInline(line.slice(2))}</p>;
-    const className = line.startsWith("来源：") ? "report-source" : undefined;
-    return <p key={index} className={className}>{renderInline(line)}</p>;
+    // Numbered news item: "1. **title**" or "1. title"
+    if (/^\d+[.、）)]\s/.test(line)) {
+      const content = line.replace(/^\d+[.、）)]\s*/, "").replace(/^\*{1,2}/, "").replace(/\*{1,2}$/, "").trim();
+      return <p key={index} className="report-news-item">{renderInline(content)}</p>;
+    }
+    // Skip bullets, detail paragraphs (分类/来源/时间/正文)
+    return null;
   });
 
   return <div className="push-report-body">{blocks}</div>;
