@@ -1307,7 +1307,7 @@ function ReportMarkdown({ text }: { text: string }) {
     if (line === "---") return <hr key={index} />;
     if (line.startsWith("### ")) return <h4 key={index}>{renderInline(line.slice(4))}</h4>;
     if (line.startsWith("## ")) return <h3 key={index}>{renderInline(line.slice(3))}</h3>;
-    if (line.startsWith("# ")) return <h2 key={index}>{renderInline(line.slice(2))}</h2>;
+    if (line.startsWith("# ")) return null;
     if (line.startsWith("- ")) return <p key={index} className="report-bullet">{renderInline(line.slice(2))}</p>;
     const className = line.startsWith("来源：") ? "report-source" : undefined;
     return <p key={index} className={className}>{renderInline(line)}</p>;
