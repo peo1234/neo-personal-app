@@ -801,7 +801,10 @@ const TICKER_FALLBACK = [
 function parseHeadlines(records: { content?: string; excerpt?: string; title?: string }[]): string[] {
   if (!records.length) return [];
   const r = records[0];
-  const content = r.content ?? r.excerpt ?? "";
+  const raw = r.content ?? r.excerpt ?? "";
+  // Skip meta header (title/date/coverage/overview) before first ## section
+  const firstSection = raw.indexOf("\n## ");
+  const content = firstSection >= 0 ? raw.slice(firstSection + 1) : raw;
   const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
   let parsed = lines.filter(l => /^[①②③④⑤⑥⑦⑧⑨⑩]/.test(l));
   if (!parsed.length)
