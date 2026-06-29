@@ -1324,9 +1324,15 @@ function ReportMarkdown({ text }: { text: string }) {
     const line = raw.trim();
     if (!line || line === "---") return null;
     if (line.startsWith("## ")) return <h3 key={index}>{renderInline(line.slice(3))}</h3>;
+    // News item title (various API formats)
     const title = extractNewsTitle(line);
     if (title) return <p key={index} className="report-news-item">{renderInline(title)}</p>;
-    return null;
+    // Skip metadata lines: 来源/时间/分类 bullets, 🏷️/🕐 inline tags, ### category headers
+    if (line.startsWith("- **分类") || line.startsWith("- **来源") || line.startsWith("- **时间")) return null;
+    if (line.startsWith("🏷️") || line.startsWith("🕐") || line.startsWith("###")) return null;
+    if (/^[-•]\s*(来源|时间|分类|标签)[：:]/.test(line)) return null;
+    // Render content paragraph
+    return <p key={index}>{renderInline(line)}</p>;
   });
 
   return <div className="push-report-body">{blocks}</div>;
