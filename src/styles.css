@@ -2561,6 +2561,7 @@ button:disabled {
 .ticker-viewport {
   flex: 1;
   min-width: 0;
+  min-height: calc(1.55em * 2);
   overflow: hidden;
 }
 
@@ -2572,9 +2573,6 @@ button:disabled {
   transition: opacity 0.3s ease, transform 0.35s ease;
   opacity: 1;
   transform: translateY(0);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .ticker-idx {
