@@ -798,22 +798,34 @@ const TICKER_FALLBACK = [
   "⑤ 国内大模型混战加剧，百模大战进入下半场",
 ];
 
+function extractNewsTitle(line: string): string | null {
+  // **① title** — bold + circled number (latest API format)
+  if (/^\*{1,2}[①②③④⑤⑥⑦⑧⑨⑩]/.test(line)) {
+    return line.replace(/^\*{1,2}/, "").replace(/\*{1,2}$/, "").replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/, "").trim();
+  }
+  // ① title — plain circled number
+  if (/^[①②③④⑤⑥⑦⑧⑨⑩]\s/.test(line)) {
+    return line.replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/, "").trim();
+  }
+  // ### 1. title — h3 numbered heading
+  if (/^###\s+\d+[.、）)]\s/.test(line)) {
+    return line.replace(/^###\s+/, "").replace(/^\d+[.、）)]\s*/, "").trim();
+  }
+  // **1. title** — bold numbered
+  if (/^\*{1,2}\d+[.、）)]\s/.test(line)) {
+    return line.replace(/^\*{1,2}/, "").replace(/\*{1,2}$/, "").replace(/^\d+[.、）)]\s*/, "").replace(/^🏷️\s*/, "").trim();
+  }
+  return null;
+}
+
 function parseHeadlines(records: { content?: string; excerpt?: string; title?: string }[]): string[] {
   if (!records.length) return [];
   const r = records[0];
   const raw = r.content ?? r.excerpt ?? "";
-  // Skip meta header (title/date/coverage/overview) before first ## section
   const firstSection = raw.indexOf("\n## ");
   const content = firstSection >= 0 ? raw.slice(firstSection + 1) : raw;
   const lines = content.split("\n").map(l => l.trim()).filter(Boolean);
-  let parsed = lines.filter(l => /^[①②③④⑤⑥⑦⑧⑨⑩]/.test(l));
-  if (!parsed.length)
-    parsed = lines.filter(l => /^(\*{0,2})\d+[.、）)]\s*\*{0,2}/.test(l))
-      .map(l => l.replace(/^\*{0,2}\d+[.、）)]\s*\*{0,2}/, "").trim());
-  if (!parsed.length)
-    parsed = lines
-      .map(l => l.replace(/^#+\s*/, "").replace(/\*{1,2}([^*]+)\*{1,2}/g, "$1").trim())
-      .filter(l => l.length > 10).slice(0, 8);
+  const parsed = lines.map(extractNewsTitle).filter(Boolean) as string[];
   if (parsed.length) return parsed.map(l => stripMarkdown(l));
   if (r.title) return [stripMarkdown(r.title)];
   return [];
@@ -1310,15 +1322,10 @@ function ReportMarkdown({ text }: { text: string }) {
 
   const blocks = body.split("\n").map((raw, index) => {
     const line = raw.trim();
-    if (!line) return null;
-    if (line === "---") return <hr key={index} />;
+    if (!line || line === "---") return null;
     if (line.startsWith("## ")) return <h3 key={index}>{renderInline(line.slice(3))}</h3>;
-    // Numbered news item: "1. **title**" or "1. title"
-    if (/^\d+[.、）)]\s/.test(line)) {
-      const content = line.replace(/^\d+[.、）)]\s*/, "").replace(/^\*{1,2}/, "").replace(/\*{1,2}$/, "").trim();
-      return <p key={index} className="report-news-item">{renderInline(content)}</p>;
-    }
-    // Skip bullets, detail paragraphs (分类/来源/时间/正文)
+    const title = extractNewsTitle(line);
+    if (title) return <p key={index} className="report-news-item">{renderInline(title)}</p>;
     return null;
   });
 
