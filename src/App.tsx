@@ -1318,22 +1318,44 @@ function renderInline(text: string) {
 }
 
 function ReportMarkdown({ text }: { text: string }) {
-  // Skip meta header (title line, date, coverage, overview) before first section
   const firstSection = text.indexOf("\n## ");
   const body = firstSection >= 0 ? text.slice(firstSection + 1) : text;
 
+  let sectionNum = 0;
   const blocks = body.split("\n").map((raw, index) => {
     const line = raw.trim();
     if (!line || line === "---") return null;
-    if (line.startsWith("## ")) return <h3 key={index}>{renderInline(line.slice(3))}</h3>;
+
+    // Section header → numbered badge + title
+    if (line.startsWith("## ")) {
+      sectionNum++;
+      const rest = line.slice(3);
+      const numMatch = rest.match(/^(\d+)[.、）)]\s*/);
+      const num = numMatch ? numMatch[1] : String(sectionNum);
+      const label = numMatch ? rest.slice(numMatch[0].length).trim() : rest.trim();
+      return (
+        <div key={index} className="report-section-hd">
+          <span className="report-section-badge">{num}</span>
+          <span className="report-section-label">{renderInline(label)}</span>
+        </div>
+      );
+    }
+
     // News item title (various API formats)
     const title = extractNewsTitle(line);
-    if (title) return <p key={index} className="report-news-item">{renderInline(title)}</p>;
-    // Skip metadata lines: 来源/时间/分类 bullets, 🏷️/🕐 inline tags, ### category headers
-    if (line.startsWith("- **分类") || line.startsWith("- **来源") || line.startsWith("- **时间")) return null;
+    if (title) return <p key={index} className="report-item-title">{renderInline(title)}</p>;
+
+    // Skip ### sub-headers and emoji tag lines
     if (line.startsWith("🏷️") || line.startsWith("🕐") || line.startsWith("###")) return null;
-    if (/^[-•]\s*(来源|时间|分类|标签)[：:]/.test(line)) return null;
-    // Render content paragraph
+
+    // Source line → show as "— source"
+    const srcMatch = line.match(/^-\s*\*{0,2}来源\*{0,2}[：:]\s*(.+)/);
+    if (srcMatch) return <p key={index} className="report-source-line">— {srcMatch[1].replace(/\*+/g, "")}</p>;
+
+    // Skip other metadata
+    if (line.startsWith("- **分类") || line.startsWith("- **时间")) return null;
+    if (/^[-•]\s*(时间|分类|标签)[：:]/.test(line)) return null;
+
     return <p key={index}>{renderInline(line)}</p>;
   });
 
